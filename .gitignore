@@ -47,3 +47,4 @@ xnd/Gemfile.lock
 xnd/lib/ruby_xnd.so
 ndtypes/tmp/
 ndtypes/Gemfile.lock
+ndtypes/lib/ruby_ndtypes.so
