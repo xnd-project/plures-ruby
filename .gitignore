@@ -44,3 +44,5 @@ build-iPhoneSimulator/
 .rvmrc
 xnd/tmp/
 xnd/Gemfile.lock
+ndtypes/tmp/
+ndtypes/Gemfile.lock
