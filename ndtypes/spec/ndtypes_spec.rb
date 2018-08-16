@@ -8,4 +8,19 @@ describe NDTypes do
       expect_serialize o
     end
   end
+
+  context "#serialize" do
+    it "serializes the given shape" do
+      s = NDTypes.new "3 * char"
+      s.serialize
+    end
+  end
+
+  context ".deserialize" do
+    it "deserializes the NDT object" do 
+      s = NDTypes.new "3 * char"
+      t = s.serialize
+      NDTypes.deserialize t
+    end
+  end
 end
