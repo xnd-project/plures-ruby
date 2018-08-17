@@ -9,4 +9,6 @@ end
   find_header(header, "/home/sameer/gitrepos/plures-ruby/build/include")
   have_header(header)
 end
+
+$CFLAGS += " -g "
 create_makefile("ruby_ndtypes/ruby_ndtypes")
