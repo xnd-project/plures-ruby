@@ -5,13 +5,22 @@
 #define GC_GUARD_TABLE_NAME "__gc_guard_table"
 
 static ID id_gc_guard_table;
+extern VALUE cNDTypes;
 
-/* Set the GC guard  */
+/* Unregister an NDT object from the GC guard. */
 void
-gc_guard_aset(NdtObject *ndt, VALUE rbuf)
+gc_guard_unregister(NdtObject *ndt)
 {
   VALUE table = rb_ivar_get(cNDTypes, id_gc_guard_table);
-  rb_hash_aset(table, PTR2NUM);
+  rb_hash_delete(table, PTR2NUM(ndt));
+}
+
+/* Register a NDT-rbuf pair in the GC guard.  */
+void
+gc_guard_register(NdtObject *ndt, VALUE rbuf)
+{
+  VALUE table = rb_ivar_get(cNDTypes, id_gc_guard_table);
+  rb_hash_aset(table, PTR2NUM(ndt), rbuf);
 }
 
 /* Initialize the global GC guard table. klass is a VALUE reprensenting NDTypes class. */
