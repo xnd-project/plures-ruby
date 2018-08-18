@@ -1,4 +1,5 @@
 #include "ruby_ndtypes.h"
+#include "gc_guard.h"
 
 static const rb_data_type_t NdtObject_type;
 
@@ -87,7 +88,9 @@ typedef struct {
     TypedData_Get_Struct((obj), NdtObject,              \
                          &NdtObject_type, (ndt_p));     \
   } while (0)
-
+#define WRAP_NDT(self, ndt_p) do {                                      \
+    TypedData_Make_Struct(self, NdtObject, &NdtObject_type, ndt_p);     \
+  } while(0)
 
 /* Get the metatdata of the ResourceBufferObject within this NDT Ruby object. */
 static ndt_meta_t *
@@ -100,6 +103,15 @@ rbuf_ndt_meta(VALUE ndt)
   GET_RBUF(ndt_p->rbuf, rbuf_p);
 
   return rbuf_p->m;
+}
+
+/* Allocate an NDT pointer and return a Ruby object. */
+static VALUE
+ndt_alloc(NdtObject *ndt)
+{
+  VALUE obj;
+  
+  return WRAP_NDT(obj, ndt);
 }
 
 /* GC mark the NdtObject struct. */
@@ -147,7 +159,7 @@ NDTypes_allocate(VALUE self)
 {
   NdtObject *ndt;
   
-  return TypedData_Make_Struct(self, NdtObject, &NdtObject_type, ndt);
+  return WRAP_NDT(self, ndt);
 }
 /******************************************************************************/
 
@@ -210,10 +222,15 @@ NDTypes_serialize(VALUE self)
 
 /* Deserialize a byte string into an NDTypes object. */
 static VALUE
-NDTypes_s_deserialize(VALUE tp, VALUE ndtype)
+NDTypes_s_deserialize(VALUE klass, VALUE str)
 {
+  NdtObject *ndt;
   NDT_STATIC_CONTEXT(ctx);
-  VALUE self;
+
+  
+  if (obj == NULL) {
+    
+  }
 
   
 }
@@ -223,9 +240,16 @@ void Init_ruby_ndtypes(void)
   VALUE cNDTypes = rb_define_class("NDTypes", rb_cObject);
   VALUE cNDTypes_RBuf = rb_define_class_under(cNDTypes, "RBuf", rb_cObject);
 
+  /* Initializers */
   rb_define_alloc_func(cNDTypes, NDTypes_allocate);
   rb_define_method(cNDTypes, "initialize", NDTypes_initialize, 1);
+
+  /* Instance methods */
   rb_define_method(cNDTypes, "serialize", NDTypes_serialize, 0);
 
+  /* Class methods */
   rb_define_singleton_method(cNDTypes, "deserialize", NDTypes_s_deserialize, 1);
+
+  /* GC guard table */
+  init_gc_guard(cNDTypes);
 }
