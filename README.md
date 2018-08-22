@@ -15,4 +15,13 @@ For now I am simply copying pre-built binaries into the repo and using those for
 building the wrapper. However I will write a proper installation script for building the gems
 from source later.
 
-# Acknowledgements
+# Installation
+
+This is a temporary install. The libraries will be segregated and packaged when ready
+for deployment.
+
+1. Clone the xnd-all repo : https://github.com/plures/xnd-all
+2. Install and build the binaries for your machine.
+3. Copy paste the build/ folder and its contents to this directory.
+4. `cd` into the library you want to build and follow instructions in that README.
+
