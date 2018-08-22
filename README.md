@@ -14,3 +14,5 @@ atleast for the time being.
 For now I am simply copying pre-built binaries into the repo and using those for
 building the wrapper. However I will write a proper installation script for building the gems
 from source later.
+
+# Acknowledgements

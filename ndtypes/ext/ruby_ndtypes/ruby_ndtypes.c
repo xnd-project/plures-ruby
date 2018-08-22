@@ -1,11 +1,19 @@
-#include "ruby_ndtypes.h"
-#include "gc_guard.h"
+/* Main file for ndtypes ruby wrapper.
+ *
+ * Author: Sameer Deshmukh (@v0dro)
+ */
 
+#include "ruby_ndtypes_internal.h"
+
+/* ---------- Interal declarations ---------- */
+/* data_type_t variables. */
 static const rb_data_type_t NdtObject_type;
 
 /* Class declarations. */
 VALUE cNDTypes;
 static VALUE cNDTypes_RBuf;
+
+/* ------------------------------------------ */
 
 /******************************************************************************/
 /************************* Resource Buffer Object *****************************/
@@ -14,7 +22,7 @@ static VALUE cNDTypes_RBuf;
  * internal state. It might or might not be duplicated across other NDT
  * objects.
  */
-typedef struct {
+typedef struct ResourceBufferObject {
   ndt_meta_t *m;
 } ResourceBufferObject;
 
@@ -77,7 +85,7 @@ rbuf_allocate(void)
 /******************************************************************************/
 /************************* NDT struct object **********************************/
 
-typedef struct {
+typedef struct NdtObject {
   VALUE rbuf;                  /* resource buffer */
   ndt_t *ndt;                   /* type */
 } NdtObject;
@@ -88,9 +96,8 @@ typedef struct {
     TypedData_Get_Struct((obj), NdtObject,              \
                          &NdtObject_type, (ndt_p));     \
   } while (0)
-#define WRAP_NDT(self, ndt_p) do {                                      \
-    TypedData_Make_Struct(self, NdtObject, &NdtObject_type, ndt_p);     \
-  } while(0)
+#define WRAP_NDT(self, ndt_p) TypedData_Make_Struct(self, NdtObject,    \
+                                                    &NdtObject_type, ndt_p)
 
 /* Get the metatdata of the ResourceBufferObject within this NDT Ruby object. */
 static ndt_meta_t *
@@ -105,13 +112,18 @@ rbuf_ndt_meta(VALUE ndt)
   return rbuf_p->m;
 }
 
-/* Allocate an NDT pointer and return a Ruby object. */
+/* Allocate an NDT pointer and return a Ruby object wrapped within the object. */
 static VALUE
-ndt_alloc(NdtObject *ndt)
+NdtObject_alloc(NdtObject *ndt)
 {
   VALUE obj;
   
-  return WRAP_NDT(obj, ndt);
+  WRAP_NDT(obj, ndt);
+  if (obj == NULL) {
+    /* TODO: raise error for no allocation. */
+  }
+
+  return obj;
 }
 
 /* GC mark the NdtObject struct. */
@@ -130,7 +142,7 @@ NdtObject_dfree(void * self)
 {
   NdtObject * ndt = (NdtObject*)self;
   
-  /* TODO: what do to about the rbuf VALUE pointer. How to free it? */
+  gc_guard_unregister(ndt);
   xfree(ndt);
 }
 
@@ -161,6 +173,22 @@ NDTypes_allocate(VALUE self)
   
   return WRAP_NDT(self, ndt);
 }
+
+/* Helper function for allocating and registering NDT object GC guard hash. */
+static NdtObject *
+NDTypes_alloc_and_register(VALUE self)
+{
+  NdtObject *ndt;
+  
+  GET_NDT(self, ndt);
+  RBUF(ndt) = rbuf_allocate();
+  if (RBUF(ndt) == NULL) {
+    /* check if ndt rbuf allocation was successful. raise error if not. */
+  }
+  gc_guard_register(ndt, RBUF(ndt));
+
+  return ndt;
+}
 /******************************************************************************/
 
 
@@ -178,16 +206,12 @@ NDTypes_initialize(VALUE self, VALUE type)
 
   Check_Type(type, T_STRING);
 
-  cp = RSTRING_PTR(type);
+  cp = StringValuePtr(type);
   if (cp == NULL) {
     
   }
     
-  GET_NDT(self, ndt);
-  RBUF(ndt) = rbuf_allocate();
-  if (RBUF(ndt) == NULL) {
-    
-  }
+  ndt = NDTypes_alloc_and_register(self);
 
   NDT(ndt) = ndt_from_string_fill_meta(rbuf_ndt_meta(self), cp, &ctx);
   if (NDT(ndt) == NULL) {
@@ -224,21 +248,35 @@ NDTypes_serialize(VALUE self)
 static VALUE
 NDTypes_s_deserialize(VALUE klass, VALUE str)
 {
-  NdtObject *ndt;
+  NdtObject *ndt_p;
+  VALUE ndt;
+  char *cp;
+  int64_t len;
   NDT_STATIC_CONTEXT(ctx);
 
-  
-  if (obj == NULL) {
-    
+  Check_Type(str, T_STRING);
+
+  cp = StringValuePtr(str);
+  if (cp == NULL) {
+    /* TODO: cannot get string pointer. */
+  }
+  len = RSTRING_LEN(str);
+
+  ndt = NdtObject_alloc(ndt_p);
+  ndt_p = NDTypes_alloc_and_register(ndt);
+
+  NDT(ndt_p) = ndt_deserialize(rbuf_ndt_meta(ndt), cp, len, &ctx);
+  if (NDT(ndt_p) == NULL) {
+    /* TODO: raise error for cannot deserialize */
   }
 
-  
+  return ndt;
 }
 
 void Init_ruby_ndtypes(void)
 {
-  VALUE cNDTypes = rb_define_class("NDTypes", rb_cObject);
-  VALUE cNDTypes_RBuf = rb_define_class_under(cNDTypes, "RBuf", rb_cObject);
+  cNDTypes = rb_define_class("NDTypes", rb_cObject);
+  cNDTypes_RBuf = rb_define_class_under(cNDTypes, "RBuf", rb_cObject);
 
   /* Initializers */
   rb_define_alloc_func(cNDTypes, NDTypes_allocate);

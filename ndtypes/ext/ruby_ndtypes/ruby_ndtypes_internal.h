@@ -6,7 +6,13 @@
 
 #include "ruby.h"
 #include "ndtypes.h"
+#include "ruby_ndtypes.h"
 
+/* typedefs */
+typedef struct NdtObject NdtObject;
+typedef struct ResourceBufferObject ResourceBufferObject;
+
+/* macros */
 #if SIZEOF_LONG == SIZEOF_VOIDP
 # define PTR2NUM(x)   (LONG2NUM((long)(x)))
 # define NUM2PTR(x)   ((void*)(NUM2ULONG(x)))
