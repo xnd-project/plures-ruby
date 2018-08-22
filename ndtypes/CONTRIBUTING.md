@@ -35,8 +35,8 @@ In the above, the `rbuf` is a Ruby object that contains a struct of type `Resour
 This is the internal object that need to be shared among multiple user-facing `NDTypes` objects.
 
 The `gc_guard.c` file contains functions that help us interface with a global hash called
-`__gc_guard_table` that is present under the `NDTypes` class as a instance variable on the
-class object (not on the instance of the class).
+`__gc_guard_table` that is present under the `NDTypes::GCGuard` module as a instance variable 
+on the module object.
 
 ### Impact on contributor
 

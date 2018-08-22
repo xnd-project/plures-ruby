@@ -8,6 +8,8 @@
 #include "ndtypes.h"
 #include "ruby_ndtypes.h"
 
+extern VALUE mNDTypes_GCGuard;
+
 /* typedefs */
 typedef struct NdtObject NdtObject;
 typedef struct ResourceBufferObject ResourceBufferObject;

@@ -16,11 +16,21 @@ describe NDTypes do
     end
   end
 
+  context "#to_s" do
+    it "converts to string using ndt_as_string" do
+      t = NDTypes.new "5 * int64"
+
+      expect(t.to_s).to eq("5 * int64")
+    end
+  end
+
   context ".deserialize" do
     it "deserializes the NDT object" do 
       s = NDTypes.new "3 * char"
       t = s.serialize
-      NDTypes.deserialize t
+      u = NDTypes.deserialize t
+      
+      expect(s).to eq(u)
     end
   end
 end
