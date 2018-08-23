@@ -15,8 +15,8 @@ class XND < RubyXND
         NDTypes.new actual_type_of(value, dtype: dtype)
       end
 
-      def actual_type_of
-        ret = ""
+      def actual_type_of value, dtype: nil
+        ret = nil
         if value.is_a? Array
           data, shapes = data_shapes value
           opt = data.include? nil
@@ -29,7 +29,7 @@ class XND < RubyXND
 
               data.each do |x|
                 if !x.nil?
-                  t = type_of(x)
+                  t = actual_type_of(x)
                   if t != dtype
                     raise ValueError, "dtype mismatch: have t=#{t} and dtype=#{dtype}"
                   end
@@ -39,10 +39,24 @@ class XND < RubyXND
 
             dtype = '?' + dtype if opt
           end
+
+          t = dtype
+          var = shapes.map { |lst| lst.uniq.size > 1 || nil }.any?
+          shapes.each do |lst|
+            opt = lst.include? nil
+            lst.map! { |x| x.nil? ? 0 : x }
+            t = add_dim(opt: opt, shapes: lst, typ: t, use_var: var)
+          end
+
+          ret = t
         elsif !dtype.nil?
           raise TypeError, "dtype arguement is only supported for Arrays."
         elsif value.is_a? Hash
-          # TODO
+          if value.keys.all? { |k| k.is_a?(String) }
+            ret = "{" + value.map { |k, v| "#{k} : #{actual_type_of(v)}"}.join(", ") + "}"
+          else
+            raise ValueError, "all hash keys must be String."  
+          end
         elsif value.nil?
           ret = '?float64'
         elsif value.is_a? Float
@@ -56,8 +70,34 @@ class XND < RubyXND
         else
           raise ArgumentError, "cannot infer data type for: #{value}"
         end
+
+        ret
+      end
+
+      def accumulate arr
+        result = []
+        arr.inject(0) do |memo, a|
+          result << memo + a
+          memo + a
+        end
+
+        result
+      end
+
+      # Construct a new dimension type based on the list of 'shapes' that
+      # are present in a dimension.
+      def add_dim *args, opt: false, shapes: nil, typ: nil, use_var: false
+        if use_var
+          offsets = [0] + accumulate(shapes)
+          return "#{opt ? '?' : ''}var(offsets=#{offsets}) * #{typ}"
+        else
+          n = shapes.uniq.size
+          shape = (n == 0 ? 0 : shapes[0])
+          return "#{shape} * #{typ}"
+        end
       end
       
+      # Internal function for extracting the data and dimensions of nested arrays.
       def search level, data, acc, minmax
         raise(ValueError, "too many dimensions: #{level}") if level > MAX_DIM
 
@@ -113,6 +153,14 @@ class XND < RubyXND
         shapes = acc[0...max_level].reverse
 
         [data, shapes]
+      end
+
+      def choose_dtype array
+        array.each do |x|
+          return actual_type_of(x) if !x.nil?
+        end
+        
+        'float64'
       end
     end
   end

@@ -2,6 +2,15 @@ require 'spec_helper'
 
 describe XND::TypeInference do
   MAX_DIM = NDTypes::MAX_DIM
+
+  context ".accumulate" do
+    it "returns accumulated of sum of an Array" do
+      arr = [1,2,3,4,5]
+      result = [1,3,6,10,15]
+
+      expect(XND::TypeInference.accumulate(arr)).to eq(result)
+    end
+  end
   
   context ".search" do
     it "searches for data and shape and loads in acc Array" do
@@ -28,14 +37,21 @@ describe XND::TypeInference do
       expect(XND::TypeInference.data_shapes(data)).to eq(result)
     end
   end
+
+  context ".add_dim" do
+    it "calculates dimension" do
+      
+    end
+  end
   
   context ".type_of" do
-    it "generates correct ndtype for fixed array" do
+    it "generates correct ndtype for fixed array", focus: true do
       value = [
         [1,2,3],
         [5,6,7]
       ]
       type = NDTypes.new "2 * 3 * int64"
+
       expect(XND::TypeInference.type_of(value)).to eq(type)
     end
 
