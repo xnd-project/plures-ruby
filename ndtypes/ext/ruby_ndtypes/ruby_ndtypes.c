@@ -322,6 +322,9 @@ void Init_ruby_ndtypes(void)
   /* Class methods */
   rb_define_singleton_method(cNDTypes, "deserialize", NDTypes_s_deserialize, 1);
 
+  /* Constants */
+  rb_define_const(cNDTypes, "MAX_DIM", INT2NUM(NDT_MAX_DIM));
+
   /* GC guard init */
   init_gc_guard();
 }

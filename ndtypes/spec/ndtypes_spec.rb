@@ -1,6 +1,12 @@
 require 'spec_helper'
 
 describe NDTypes do
+  context "::MAX_DIM" do
+    it "returns the maximum dimension possible" do
+      expect(NDTypes::MAX_DIM > 0).to eq(true)
+    end
+  end
+  
   context ".new" do
     it "creates a basic shaped memory block" do
       o = NDTypes.new("3 * uint64")
