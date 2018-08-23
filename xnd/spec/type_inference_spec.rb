@@ -1,7 +1,35 @@
 require 'spec_helper'
 
 describe XND::TypeInference do
-  context "#type_of" do
+  MAX_DIM = NDTypes::MAX_DIM
+  
+  context ".search" do
+    it "searches for data and shape and loads in acc Array" do
+      data = [[0, 1], [2, 3, 4], [5, 6, 7, 8]]
+      result = [[3], [2, 3, 4], [0, 1, 2, 3, 4, 5, 6, 7, 8], *(Array.new(MAX_DIM-2) { [] })]
+      
+      min_level = MAX_DIM + 1
+      max_level = 0
+      acc = Array.new(MAX_DIM + 1) { [] }
+      minmax = [min_level, max_level]
+
+      XND::TypeInference.search max_level, data, acc, minmax
+
+      expect(acc).to eq(result)
+      expect(minmax[0]).to eq(minmax[1])
+    end
+  end
+  
+  context ".data_shapes" do
+    it "extracts the shape of nested Array data" do
+      data = [[0, 1], [2, 3, 4], [5, 6, 7, 8]]
+      result = [[0, 1, 2, 3, 4, 5, 6, 7, 8], [[2, 3, 4], [3]]]
+
+      expect(XND::TypeInference.data_shapes(data)).to eq(result)
+    end
+  end
+  
+  context ".type_of" do
     it "generates correct ndtype for fixed array" do
       value = [
         [1,2,3],
