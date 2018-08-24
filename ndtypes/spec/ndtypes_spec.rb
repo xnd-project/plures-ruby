@@ -7,7 +7,7 @@ describe NDTypes do
     end
   end
 
-  context ".typedef", focus: true do
+  context ".typedef" do
     it "creates a typedef for an official type" do
       NDTypes.typedef "node", "int32"
 

@@ -193,6 +193,30 @@ NDTypes_alloc_and_register(VALUE self)
 }
 /******************************************************************************/
 
+#define NDTYPES_BOOL_FUNC(NDTFUNC)                                      \
+  static VALUE                                                          \
+  NDTypes_##NDTFUNC(VALUE self)                                         \
+  {                                                                     \
+    NdtObject *ndt_p;                                                   \
+    GET_NDT(self, ndt_p);                                               \
+    if (NDTFUNC(NDT(ndt_p))) {                                          \
+      return Qtrue;                                                     \
+    }                                                                   \
+    return Qfalse;                                                      \
+  }
+
+NDTYPES_BOOL_FUNC(ndt_is_abstract)
+NDTYPES_BOOL_FUNC(ndt_is_concrete)
+
+NDTYPES_BOOL_FUNC(ndt_is_optional)
+NDTYPES_BOOL_FUNC(ndt_is_scalar)
+NDTYPES_BOOL_FUNC(ndt_is_signed)
+NDTYPES_BOOL_FUNC(ndt_is_unsigned)
+NDTYPES_BOOL_FUNC(ndt_is_float)
+NDTYPES_BOOL_FUNC(ndt_is_complex)
+
+NDTYPES_BOOL_FUNC(ndt_is_c_contiguous)
+NDTYPES_BOOL_FUNC(ndt_is_f_contiguous)
 
 /* Initialize an instance of an NDTypes object. */
 static VALUE
@@ -223,6 +247,7 @@ NDTypes_initialize(VALUE self, VALUE type)
   return self;
 }
 
+/* String representation of the type. */
 static VALUE
 NDTypes_to_s(VALUE self)
 {
@@ -264,6 +289,12 @@ NDTypes_serialize(VALUE self)
   ndt_free(bytes);
 
   return str;
+}
+
+static VALUE
+NDTypes_concrete_qmark(VALUE self)
+{
+  
 }
 
 /****************************************************************************/
@@ -366,6 +397,18 @@ void Init_ruby_ndtypes(void)
   /* Instance methods */
   rb_define_method(cNDTypes, "serialize", NDTypes_serialize, 0);
   rb_define_method(cNDTypes, "to_s", NDTypes_to_s, 0);
+
+  /* Boolean functions */
+  rb_define_method(cNDTypes, "concrete?", NDTypes_ndt_is_concrete, 0);
+  rb_define_method(cNDTypes, "abstract?", NDTypes_ndt_is_abstract, 0);
+  rb_define_method(cNDTypes, "optional?", NDTypes_ndt_is_optional, 0);
+  rb_define_method(cNDTypes, "scalar?", NDTypes_ndt_is_scalar, 0);
+  rb_define_method(cNDTypes, "signed?", NDTypes_ndt_is_signed, 0);
+  rb_define_method(cNDTypes, "unsigned?", NDTypes_ndt_is_unsigned, 0);
+  rb_define_method(cNDTypes, "float?", NDTypes_ndt_is_float, 0);
+  rb_define_method(cNDTypes, "complex?", NDTypes_ndt_is_complex, 0);
+  rb_define_method(cNDTypes, "c_contiguous?", NDTypes_ndt_is_c_contiguous, 0);
+  rb_define_method(cNDTypes, "f_contiguous?", NDTypes_ndt_is_f_contiguous, 0);
 
   /* Class methods */
   rb_define_singleton_method(cNDTypes, "deserialize", NDTypes_s_deserialize, 1);
