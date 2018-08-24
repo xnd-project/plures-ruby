@@ -165,7 +165,34 @@ class XND < RubyXND
     end
   end
   
-  def initialize data, type: nil
-    # TODO: write type inference code.
+  def initialize data, type: nil, dtype: nil, levels: nil, typedef: nil, dtypedef: nil
+    if [type, dtype, levels, typedef, dtypedef].count(nil) < 2
+      raise ArgumentError, "the 'type', 'dtype', 'levels' and 'typedef' arguments are "
+      "mutually exclusive."
+    end
+
+    if type
+      type = NDTypes.new(type) if type.is_a? String
+    elsif dtype
+      type = TypeInference.type_of data, dtype: dtype
+    elsif levels
+      args = levels.map { |l| l ? l : 'NA' }.join(', ')
+      t = "#{value.size} * categorical(#{args})"
+      type = NDTypes.new t
+    elsif typedef
+      type = NDTypes.new typedef
+      if type.abstract?
+        dtype = type.hidden_dtype
+        t = TypeInference.type_of value, dtype: dtype
+        type = NDTypes.instantiate typedef, t
+      end
+    elsif dtypedef
+      dtype = NDTypes.new dtypedef
+      type = TypeInference.type_of data, dtype: dtype
+    else
+      type = TypeInference.type_of data
+    end
+
+    super(type, data)
   end
 end

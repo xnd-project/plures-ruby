@@ -11,3 +11,5 @@ class NDTypes
     end
   end
 end
+
+NDT = NDTypes

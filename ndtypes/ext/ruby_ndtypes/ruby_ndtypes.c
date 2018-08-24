@@ -266,6 +266,10 @@ NDTypes_serialize(VALUE self)
   return str;
 }
 
+/****************************************************************************/
+/*                                  Class methods                           */
+/****************************************************************************/
+
 /* Deserialize a byte string into an NDTypes object. */
 static VALUE
 NDTypes_s_deserialize(VALUE klass, VALUE str)
@@ -305,8 +309,52 @@ NDTypes_s_deserialize(VALUE klass, VALUE str)
   return ndt;
 }
 
+/* Create a typedef */
+static VALUE
+NDTypes_s_typedef(VALUE klass, VALUE new_type, VALUE old_type)
+{
+  NDT_STATIC_CONTEXT(ctx);
+  const char *cname, *ctype;
+  ndt_t *t;
+
+  Check_Type(new_type, T_STRING);
+  Check_Type(old_type, T_STRING);
+
+  cname = StringValueCStr(new_type);
+  if (cname == NULL) {
+    
+  }
+
+  ctype = StringValueCStr(old_type);
+  if (ctype == NULL) {
+    
+  }
+
+  t = ndt_from_string(ctype, &ctx);
+  if (t == NULL) {
+    
+  }
+
+  if (ndt_typedef(cname, t, NULL, &ctx) < 0) {
+    
+  }
+
+  return Qnil;
+}
+
+static VALUE
+NDTypes_s_instantiate(VALUE klass, VALUE typdef, VALUE ndt)
+{
+  
+}
+
 void Init_ruby_ndtypes(void)
 {
+  NDT_STATIC_CONTEXT(ctx);
+
+  /* initialize NDT internals */
+  ndt_init(&ctx);
+  
   cNDTypes = rb_define_class("NDTypes", rb_cObject);
   cNDTypes_RBuf = rb_define_class_under(cNDTypes, "RBuf", rb_cObject);
   mNDTypes_GCGuard = rb_define_module_under(cNDTypes, "GCGuard");
@@ -321,6 +369,8 @@ void Init_ruby_ndtypes(void)
 
   /* Class methods */
   rb_define_singleton_method(cNDTypes, "deserialize", NDTypes_s_deserialize, 1);
+  rb_define_singleton_method(cNDTypes, "typedef", NDTypes_s_typedef, 2);
+  rb_define_singleton_method(cNDTypes, "instantiate", NDTypes_s_instantiate, 2);
 
   /* Constants */
   rb_define_const(cNDTypes, "MAX_DIM", INT2NUM(NDT_MAX_DIM));

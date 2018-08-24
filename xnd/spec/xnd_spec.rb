@@ -4,7 +4,7 @@ describe XND do
   context ".new" do
     it "creates a fixed array" do
       o = XND.new([[1,2,3], [2,3,4]])
-      expect(o.type).to eq(NDTypes)
+      expect(o.type).to eq(NDTypes.new("2 * 3 * int64"))
       expect(o[0,0]).to eq(XND.new([1]))
     end
   end
