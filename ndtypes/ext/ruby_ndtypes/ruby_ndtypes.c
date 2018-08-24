@@ -291,12 +291,6 @@ NDTypes_serialize(VALUE self)
   return str;
 }
 
-static VALUE
-NDTypes_concrete_qmark(VALUE self)
-{
-  
-}
-
 /****************************************************************************/
 /*                                  Class methods                           */
 /****************************************************************************/
@@ -373,9 +367,14 @@ NDTypes_s_typedef(VALUE klass, VALUE new_type, VALUE old_type)
   return Qnil;
 }
 
+/* Instatiate ndtypes object using typedef'd type and another NDTypes object. */
 static VALUE
 NDTypes_s_instantiate(VALUE klass, VALUE typdef, VALUE ndt)
 {
+  const char *cname;
+  char *cp;
+  ndt_t *t, *tp;
+  NDT_STATIC_CONTEXT(ctx);
   
 }
 

@@ -6,8 +6,10 @@
 #ifndef RUBY_NDTYPES_H
 #define RUBY_NDTYPES_H
 
+/* Public interface for ndtypes. */
+
 extern VALUE cNDTypes;
 
-void Init_ruby_ndtypes(void);
+#define NDT_CHECK_TYPE(obj) (CLASS_OF(obj) == cNDTypes)
 
 #endif  /* RUBY_NDTYPES_H */
