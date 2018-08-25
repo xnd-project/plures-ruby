@@ -105,6 +105,7 @@ typedef struct NdtObject {
 #define MAKE_NDT(self, ndt_p) TypedData_Make_Struct(self, NdtObject,    \
                                                     &NdtObject_type, ndt_p)
 #define WRAP_NDT(self, ndt_p) TypedData_Wrap_Struct(self, &NdtObject_type, ndt_p)
+#define NDT_CHECK_TYPE(obj) (CLASS_OF(obj) == cNDTypes)
 
 /* Get the metatdata of the ResourceBufferObject within this NDT Ruby object. */
 static ndt_meta_t *
@@ -374,8 +375,63 @@ NDTypes_s_instantiate(VALUE klass, VALUE typdef, VALUE ndt)
   const char *cname;
   char *cp;
   ndt_t *t, *tp;
-  NDT_STATIC_CONTEXT(ctx);
+  NDT_STATIC_CONTEXT(ctx);  
+}
+
+/****************************************************************************/
+/*                                 Public C API                               */
+/****************************************************************************/
+
+/* Return 1 if obj is of type NDTypes. 0 otherwise. */
+int rb_ndtypes_check_type(VALUE obj)
+{
+  return NDT_CHECK_TYPE(obj);
+}
+
+/* Get a pointer to the NdtObject struct that is contained within obj. */
+NdtObject *
+rb_ndtypes_get_ndt_object(VALUE obj)
+{
+  NdtObject *ndt_p;
+
+  if (!NDT_CHECK_TYPE(obj)) {
+    /* raise error */
+  }
   
+  GET_NDT(obj, ndt_p);
+
+  return ndt_p;
+}
+
+/* Get an allocated Ruby object of type NDTypes. ndt_p should have been allocated already. */
+VALUE
+rb_ndtypes_make_ndt_object(NdtObject *ndt_p)
+{
+  return MAKE_NDT(cNDTypes, ndt_p);
+}
+
+/* Perform allocation and get a Ruby object of type NDTypes. */
+VALUE
+rb_ndtypes_wrap_ndt_object(void)
+{
+  NdtObject *ndt_p;
+
+  return WRAP_NDT(cNDTypes, ndt_p);
+}
+
+/* Get pointer to the internal ndt_t object from the NDTypes Ruby object ndt. */
+const ndt_t *
+rb_ndtypes_const_ndt(VALUE ndt)
+{
+  NdtObject *ndt_p;
+  
+  if(!NDT_CHECK_TYPE(ndt)) {
+    // error condition
+  }
+
+  GET_NDT(ndt, ndt_p);
+
+  return ndt_p->ndt;
 }
 
 void Init_ruby_ndtypes(void)

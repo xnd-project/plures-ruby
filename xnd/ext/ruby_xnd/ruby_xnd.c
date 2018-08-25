@@ -55,10 +55,10 @@ typedef struct MemoryBlockObject {
     TypedData_Get_Struct((obj), MemoryBlockObject,                  \
                          &MemoryBlockObject_type, (mblock_p));      \
 } while (0)
-#define MAKE_MBLOCK(self, mblock_p) TypedData_Make_Struct(self, MemoryBufferObject, \
-                                                          &MemoryBufferObject_type, mblock_p)
+#define MAKE_MBLOCK(self, mblock_p) TypedData_Make_Struct(self, MemoryBlockObject, \
+                                                          &MemoryBlockObject_type, mblock_p)
 #define WRAP_MBLOCK(self, mblock_p) TypedData_Wrap_Struct(self,         \
-                                                          &MemoryBufferObject_type, mblock_p)
+                                                          &MemoryBlockObject_type, mblock_p)
 
 /* Mark Ruby objects within MemoryBlockObject. */
 static void
@@ -132,14 +132,16 @@ mblock_empty(VALUE type)
   NdtObject *ndt;
   VALUE self;
   
-  if (!NDT_CHECK_TYPE(type)) {
+  if (!rb_ndtypes_check_type(type)) {
     rb_raise(rb_eArgError, "expected NDT object.");
   }
 
-  GET_NDT(type, ndt);
+  ndt = rb_ndtypes_get_ndt_object(type);
 
   mblock = mblock_alloc();
-  mblock->xnd = xnd_empty_from_type(CONST_NDT(ndt), XND_OWN_EMBEDDED, &ctx);
+  mblock->xnd = xnd_empty_from_type(
+                                    rb_ndtypes_const_ndt(ndt),
+                                    XND_OWN_EMBEDDED, &ctx);
   if (mblock->xnd == NULL) {
     
   }
@@ -184,7 +186,7 @@ mblock_init(xnd_t * const x, VALUE data)
       return -1;
     }
 
-    if (v == Qnil) {
+    if (data == Qnil) {
       xnd_set_na(x);
       return 0;
     }
@@ -241,7 +243,7 @@ mblock_from_typed_value(VALUE type, VALUE data)
   
   GET_MBLOCK(mblock, mblock_p);
   
-  if (mblock_init(mblock_p->xnd->master, data) < 0) {
+  if (mblock_init(&mblock_p->xnd->master, data) < 0) {
     
   }
 
@@ -260,11 +262,47 @@ typedef struct {
 
 #define GET_XND(obj, xnd_p) do {                        \
     TypedData_Get_Struct((obj), XndObject,              \
-                         &XndObject_type, (ndt_p));     \
+                         &XndObject_type, (xnd_p));     \
   } while (0)
-#define MAKE_XND(klass, mblock_p) TypedData_Make_Struct(klass, XndObject, \
+#define MAKE_XND(klass, xnd_p) TypedData_Make_Struct(klass, XndObject, \
                                                     &XndObject_type, xnd_p)
-#define WRAP_XND(klass, mblock_p) TypedData_Wrap_Struct(klass, &XndObject_type, xnd_p)
+#define WRAP_XND(klass, xnd_p) TypedData_Wrap_Struct(klass, &XndObject_type, xnd_p)
+
+/* Mark Ruby objects within XndObject. */
+static void
+XndObject_dmark(void *self)
+{
+  XndObject *xnd = (XndObject*)self;
+
+  rb_gc_mark(xnd->type);
+  rb_gc_mark(xnd->mblock);
+}
+
+static void
+XndObject_dfree(void *self)
+{
+  XndObject *xnd = (XndObject*)self;
+
+  xfree(xnd);
+}
+
+static size_t
+XndObject_dsize(const void *self)
+{
+  return sizeof(XndObject);
+}
+
+static const rb_data_type_t XndObject_type = {
+  .wrap_struct_name = "XndObject",
+  .function = {
+    .dmark = XndObject_dmark,
+    .dfree = XndObject_dfree,
+    .dsize = XndObject_dsize,
+    .reserved = {0,0},
+  },
+  .parent = 0,
+  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+};
 
 static VALUE
 RubyXND_from_mblock(VALUE self, VALUE mblock)

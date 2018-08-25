@@ -6,10 +6,23 @@
 #ifndef RUBY_NDTYPES_H
 #define RUBY_NDTYPES_H
 
-/* Public interface for ndtypes. */
+#if defined(__cplusplus)
+extern "C" {
+} /* satisfy cc-mode */
+#endif
 
+/* Public interface for ndtypes. */
+typedef struct NdtObject NdtObject;
 extern VALUE cNDTypes;
 
-#define NDT_CHECK_TYPE(obj) (CLASS_OF(obj) == cNDTypes)
+int rb_ndtypes_check_type(VALUE obj);
+NdtObject * rb_ndtypes_get_ndt_object(VALUE obj);
+VALUE rb_ndtypes_make_ndt_object(NdtObject *ndt_p);
+VALUE rb_ndtypes_wrap_ndt_object(void);
+const ndt_t * rb_ndtypes_const_ndt(VALUE ndt);
+
+#if defined(__cplusplus)
+} /* extern "C" { */
+#endif
 
 #endif  /* RUBY_NDTYPES_H */

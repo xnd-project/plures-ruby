@@ -1,9 +1,12 @@
 require 'mkmf'
 
+$INSTALLFILES = [
+  ["ruby_ndtypes.h", "$(archdir)"]
+]
+
 ["ndtypes", "xnd", "gumath"].each do |lib|
   find_library(lib, nil, "/home/sameer/gitrepos/plures-ruby/build/lib/")
 end
-
 
 ["xnd.h", "ndtypes.h", "gumath.h"].each do |header|
   find_header(header, "/home/sameer/gitrepos/plures-ruby/build/include")

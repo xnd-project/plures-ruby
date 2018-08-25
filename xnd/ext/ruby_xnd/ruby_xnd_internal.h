@@ -42,5 +42,6 @@
 #include "ndtypes.h"
 #include "xnd.h"
 #include "util.h"
+#include "ruby_ndtypes.h"
 
 #endif  /* RUBY_XND_INTERNAL_H */
