@@ -426,7 +426,7 @@ rb_ndtypes_const_ndt(VALUE ndt)
   NdtObject *ndt_p;
   
   if(!NDT_CHECK_TYPE(ndt)) {
-    // error condition
+    rb_raise(rb_eArgError, "must be NDT");
   }
 
   GET_NDT(ndt, ndt_p);

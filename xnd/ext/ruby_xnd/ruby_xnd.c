@@ -73,7 +73,7 @@ static void
 MemoryBlockObject_dfree(void *self)
 {
   MemoryBlockObject *mblock = (MemoryBlockObject*)self;
-
+  //
   xnd_del(mblock->xnd);
   mblock->xnd = NULL;
   xfree(mblock);
@@ -128,26 +128,22 @@ static VALUE
 mblock_empty(VALUE type)
 {
   NDT_STATIC_CONTEXT(ctx);
-  MemoryBlockObject *mblock;
-  NdtObject *ndt;
-  VALUE self;
+  MemoryBlockObject *mblock_p;
   
   if (!rb_ndtypes_check_type(type)) {
-    rb_raise(rb_eArgError, "expected NDT object.");
+    // error
   }
 
-  ndt = rb_ndtypes_get_ndt_object(type);
-
-  mblock = mblock_alloc();
-  mblock->xnd = xnd_empty_from_type(
-                                    rb_ndtypes_const_ndt(ndt),
-                                    XND_OWN_EMBEDDED, &ctx);
-  if (mblock->xnd == NULL) {
-    
+  mblock_p = mblock_alloc();
+  mblock_p->xnd = xnd_empty_from_type(
+                                      rb_ndtypes_const_ndt(type),
+                                      XND_OWN_EMBEDDED, &ctx);
+  if (mblock_p->xnd == NULL) {
+    // error
   }
-  mblock->type = type;
+  mblock_p->type = type;
 
-  return MAKE_MBLOCK(cRubyXND_MBlock, mblock);
+  return WRAP_MBLOCK(cRubyXND_MBlock, mblock_p);
 }
 
 static int64_t
@@ -242,6 +238,9 @@ mblock_from_typed_value(VALUE type, VALUE data)
   mblock = mblock_empty(type);
   
   GET_MBLOCK(mblock, mblock_p);
+  if (mblock_p == NULL) {
+    
+  }
   
   if (mblock_init(&mblock_p->xnd->master, data) < 0) {
     
@@ -304,19 +303,25 @@ static const rb_data_type_t XndObject_type = {
   .flags = RUBY_TYPED_FREE_IMMEDIATELY,
 };
 
-static VALUE
-RubyXND_from_mblock(VALUE self, VALUE mblock)
+static void
+RubyXND_from_mblock(XndObject *xnd_p, VALUE mblock)
 {
-  
+  MemoryBlockObject *mblock_p;
+
+  GET_MBLOCK(mblock, mblock_p);
+ 
+  xnd_p->mblock = mblock;
+  xnd_p->type = mblock_p->type;
+  xnd_p->xnd = mblock_p->xnd->master;
 }
 
 /* Allocator for RubyXND object. Called by Ruby before initialize. */
 static VALUE
-RubyXND_allocate(VALUE self)
+RubyXND_allocate(VALUE klass)
 {
   XndObject *xnd;
 
-  xnd = ALLOC(XndObject);
+  xnd = ZALLOC(XndObject);
   if (xnd == NULL) {
     
   }
@@ -330,7 +335,7 @@ RubyXND_allocate(VALUE self)
   xnd->xnd.type  = NULL;
   xnd->xnd.ptr = NULL;
 
-  return WRAP_XND(self, xnd);
+  return WRAP_XND(klass, xnd);
 }
 
 /* Initialize a RubyXND object. */
@@ -338,10 +343,14 @@ static VALUE
 RubyXND_initialize(VALUE self, VALUE type, VALUE data)
 {
   VALUE mblock;
+  XndObject *xnd_p;
 
   mblock = mblock_from_typed_value(type, data);
+  GET_XND(self, xnd_p);
 
-  return RubyXND_from_mblock(self, mblock);
+  RubyXND_from_mblock(xnd_p, mblock);
+
+  return self;
 }
 
 void Init_ruby_xnd(void)

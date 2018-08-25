@@ -44,11 +44,6 @@ namespace :spec do
 
   RSPEC_CMD = [ 'ruby', '-S', 'rspec', '-Ilib:ext', SPECDIR.to_s ]
 
-  #desc "Run the spec for generator.rb"
-  #task :generator do |task|
-  #  run 'rspec spec/generator_spec.rb'
-  #end
-
   desc "Run specs under GDB."
   task :gdb => [ :compile ] do |task|
           cmd = [ 'gdb' ] + GDB_OPTIONS
@@ -78,4 +73,14 @@ namespace :spec do
     cmd += RSPEC_CMD
     run( *cmd )
   end
+end
+
+LEAKCHECK_CMD = [ 'ruby', '-Ilib:ext', "#{SPECDIR}/leakcheck.rb" ]
+
+
+desc "Run leakcheck script."
+task :leakcheck => [ :compile ] do |task|
+  cmd = [ 'valgrind' ] + VALGRIND_OPTIONS
+  cmd += LEAKCHECK_CMD
+  run( *cmd )
 end
