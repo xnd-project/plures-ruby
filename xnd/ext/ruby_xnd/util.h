@@ -48,12 +48,12 @@ safe_downcast(int64_t size)
 {
 #if SIZE_MAX < INT64_MAX
     if (size > INT32_MAX) {
-        rb_raise(rb_eRuntimeError,
-            "sizes should never exceed INT32_MAX on 32-bit platforms");
+        /* rb_raise(rb_eRuntimeError, */
+        /*     "sizes should never exceed INT32_MAX on 32-bit platforms"); */
         return -1;
     }
 #endif
-    return (Py_ssize_t)size;
+    return (size_t)size;
 }
 
 static inline bool

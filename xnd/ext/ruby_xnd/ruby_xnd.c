@@ -38,6 +38,7 @@
 
 static VALUE cRubyXND;
 static VALUE cRubyXND_MBlock;
+static VALUE rb_eNotImplementedError;
 static const rb_data_type_t MemoryBlockObject_type;
 
 /****************************************************************************/
@@ -45,7 +46,7 @@ static const rb_data_type_t MemoryBlockObject_type;
 /****************************************************************************/
 
 /* The MemoryBlockObject is shared among several XND views/objects. */
-typedef struct {
+typedef struct MemoryBlockObject {
   VALUE type;        /* type owner (ndtype) */  
   xnd_master_t *xnd; /* memblock owner */
 } MemoryBlockObject;
@@ -55,23 +56,23 @@ typedef struct {
                          &MemoryBlockObject_type, (mblock_p));      \
 } while (0)
 #define MAKE_MBLOCK(self, mblock_p) TypedData_Make_Struct(self, MemoryBufferObject, \
-                                                        &MemoryBufferObject_type, mblock_p)
-#define WRAP_MBLOCK(self, mblock_p) TypedData_Wrap_Struct(self,             \
-                                                      &MemoryBufferObject_type, mblock_p)
+                                                          &MemoryBufferObject_type, mblock_p)
+#define WRAP_MBLOCK(self, mblock_p) TypedData_Wrap_Struct(self,         \
+                                                          &MemoryBufferObject_type, mblock_p)
 
-/* Mark Ruby objects within MemoryBufferObject. */
+/* Mark Ruby objects within MemoryBlockObject. */
 static void
-MemoryBufferObject_dmark(void *self)
+MemoryBlockObject_dmark(void *self)
 {
-  MemoryBufferObject *mblock = (MemoryBufferObject*)self;
+  MemoryBlockObject *mblock = (MemoryBlockObject*)self;
 
   rb_gc_mark(mblock->type);
 }
 
 static void
-MemoryBufferObject_dfree(void *self)
+MemoryBlockObject_dfree(void *self)
 {
-  MemoryBufferObject *mblock = (MemoryBufferObject*)self;
+  MemoryBlockObject *mblock = (MemoryBlockObject*)self;
 
   xnd_del(mblock->xnd);
   mblock->xnd = NULL;
@@ -79,17 +80,17 @@ MemoryBufferObject_dfree(void *self)
 }
 
 static size_t
-MemoryBufferObject_dsize(const void *self)
+MemoryBlockObject_dsize(const void *self)
 {
-  return sizeof(MemoryBufferObject);
+  return sizeof(MemoryBlockObject);
 }
 
-static const rb_data_type_t MemoryBufferObject_type = {
-  .wrap_struct_name = "MemoryBufferObject",
+static const rb_data_type_t MemoryBlockObject_type = {
+  .wrap_struct_name = "MemoryBlockObject",
   .function = {
-    .dmark = MemoryBufferObject_dmark,
-    .dfree = MemoryBufferObject_dfree,
-    .dsize = MemoryBufferObject_dsize,
+    .dmark = MemoryBlockObject_dmark,
+    .dfree = MemoryBlockObject_dfree,
+    .dsize = MemoryBlockObject_dsize,
     .reserved = {0,0},
   },
   .parent = 0,
@@ -147,6 +148,20 @@ mblock_empty(VALUE type)
   return MAKE_MBLOCK(cRubyXND_MBlock, mblock);
 }
 
+static int64_t
+get_int(VALUE data, int64_t min, int64_t max)
+{
+  int64_t x;
+
+  x = NUM2LL(data);
+  if (x < min || x > max) {
+    // TODO: error about integer out of range.
+    return -1;
+  }
+
+  return x;
+}
+
 static int
 mblock_init(xnd_t * const x, VALUE data)
 {
@@ -154,7 +169,60 @@ mblock_init(xnd_t * const x, VALUE data)
   const ndt_t * const t = x->type;
 
   if (!check_invariants(t)) {
-    
+    /* raise error */
+    return -1;
+  }
+
+  if (ndt_is_abstract(t)) {
+    // rb_raise(rb_eTypeError, "xnd has abstract type.");
+    return -1;
+  }
+
+  /* set missing value. */
+  if (ndt_is_optional(t)) {
+    if (t->ndim > 0) {
+      return -1;
+    }
+
+    if (v == Qnil) {
+      xnd_set_na(x);
+      return 0;
+    }
+
+    xnd_set_valid(x);
+  }
+
+  switch (t->tag) {
+  case FixedDim: {
+    const int64_t shape = t->FixedDim.shape;
+    int64_t i;
+
+    Check_Type(data, T_ARRAY);
+
+    if (RARRAY_LEN(data) != shape) {
+      // TODO: error
+    }
+
+    for (i = 0; i < shape; i++) {
+      xnd_t next = xnd_fixed_dim_next(x, i);
+      VALUE rb_index[1] = { LL2NUM(i) };
+      if (mblock_init(&next, rb_ary_aref(1, rb_index, data)) < 0) {
+        // error
+      }
+
+      return 0;
+    }
+  }
+  case Int64: {
+    int64_t tmp = get_int(data, INT64_MIN, INT64_MAX);
+    if (tmp == -1) { // error occured
+      
+    }
+    PACK_SINGLE(x->ptr, tmp, int64_t, t->flags);
+    return 0;
+  }
+  default:                      /* TODO: remove after implemented all dtypes. */
+    rb_raise(rb_eNotImplementedError, "invalid type tag.");
   }
 }
 
@@ -240,8 +308,12 @@ RubyXND_initialize(VALUE self, VALUE type, VALUE data)
 
 void Init_ruby_xnd(void)
 {
+  /* init classes */
   cRubyXND = rb_define_class("RubyXND", rb_cObject);
   cRubyXND_MBlock = rb_define_class_under(cRubyXND, "MBlock", rb_cObject);
+
+  /* init errors */
+  rb_eNotImplementedError = rb_define_class("NotImplementedError", rb_eScriptError);
 
   /* initializers */
   rb_define_alloc_func(cRubyXND, RubyXND_allocate);
