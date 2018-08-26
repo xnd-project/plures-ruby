@@ -41,6 +41,8 @@ static VALUE cRubyXND_MBlock;
 static VALUE rb_eNotImplementedError;
 static const rb_data_type_t MemoryBlockObject_type;
 
+VALUE mRubyXND_GCGuard;
+
 /****************************************************************************/
 /*                           MemoryBlock Object                             */
 /****************************************************************************/
@@ -54,7 +56,7 @@ typedef struct MemoryBlockObject {
 #define GET_MBLOCK(obj, mblock_p) do {                              \
     TypedData_Get_Struct((obj), MemoryBlockObject,                  \
                          &MemoryBlockObject_type, (mblock_p));      \
-} while (0)
+  } while (0)
 #define MAKE_MBLOCK(self, mblock_p) TypedData_Make_Struct(self, MemoryBlockObject, \
                                                           &MemoryBlockObject_type, mblock_p)
 #define WRAP_MBLOCK(self, mblock_p) TypedData_Wrap_Struct(self,         \
@@ -253,7 +255,7 @@ mblock_from_typed_value(VALUE type, VALUE data)
 /*                                 xnd object                               */
 /****************************************************************************/
 
-typedef struct {
+typedef struct XndObject {
   VALUE mblock;              /* owner of the primary type and memory block */
   VALUE type;                /* owner of the current type */
   xnd_t xnd;                 /* typed view, does not own anything */
@@ -282,6 +284,7 @@ XndObject_dfree(void *self)
 {
   XndObject *xnd = (XndObject*)self;
 
+  gc_guard_unregister(xnd);
   xfree(xnd);
 }
 
@@ -349,6 +352,7 @@ RubyXND_initialize(VALUE self, VALUE type, VALUE data)
   GET_XND(self, xnd_p);
 
   RubyXND_from_mblock(xnd_p, mblock);
+  gc_guard_register(xnd_p, mblock);
 
   return self;
 }
@@ -358,6 +362,7 @@ void Init_ruby_xnd(void)
   /* init classes */
   cRubyXND = rb_define_class("RubyXND", rb_cObject);
   cRubyXND_MBlock = rb_define_class_under(cRubyXND, "MBlock", rb_cObject);
+  mRubyXND_GCGuard = rb_define_module_under(cRubyXND, "GCGuard");
 
   /* init errors */
   rb_eNotImplementedError = rb_define_class("NotImplementedError", rb_eScriptError);
@@ -365,4 +370,6 @@ void Init_ruby_xnd(void)
   /* initializers */
   rb_define_alloc_func(cRubyXND, RubyXND_allocate);
   rb_define_method(cRubyXND, "initialize", RubyXND_initialize, 2);
+
+  init_gc_guard();
 }

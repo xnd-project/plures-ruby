@@ -38,10 +38,25 @@
 #ifndef RUBY_XND_INTERNAL_H
 #define RUBY_XND_INTERNAL_H
 
-#include "ruby.h"
-#include "ndtypes.h"
-#include "xnd.h"
+#include "ruby_xnd.h"
 #include "util.h"
 #include "ruby_ndtypes.h"
+
+extern VALUE mRubyXND_GCGuard;
+
+/* typedefs */
+typedef struct XndObject XndObject;
+typedef struct MemoryBlockObject MemoryBlockObject;
+
+/* macros */
+#if SIZEOF_LONG == SIZEOF_VOIDP
+# define PTR2NUM(x)   (LONG2NUM((long)(x)))
+# define NUM2PTR(x)   ((void*)(NUM2ULONG(x)))
+#elif SIZEOF_LONG_LONG == SIZEOF_VOIDP
+# define PTR2NUM(x)   (LL2NUM((LONG_LONG)(x)))
+# define NUM2PTR(x)   ((void*)(NUM2ULL(x)))
+#else
+# error ---->> ruby requires sizeof(void*) == sizeof(long) or sizeof(LONG_LONG) to be compiled. <<----
+#endif
 
 #endif  /* RUBY_XND_INTERNAL_H */
