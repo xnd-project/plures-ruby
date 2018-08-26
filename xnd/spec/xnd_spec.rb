@@ -15,11 +15,18 @@ describe XND do
       expect(o.type).to eq(t)
     end
 
-    it "raises error for type and input mismatch" do
+    it "raises ArgumentError for type and input mismatch" do
       t = NDT.new "3 * 3 * int64"
       expect {
         XND.new([[1,2,3], [2,3,4]], type: t)
       }.to raise_error(ArgumentError)
+    end
+
+    it "raises ValueError for wrong input type in int64 array" do
+      t = NDT.new "2 * 3 * int64"
+      expect {
+        XND.new([[1,2,"peep!"], [2,3,4]], type: t)
+      }.to raise_error(ValueError)      
     end
   end
 

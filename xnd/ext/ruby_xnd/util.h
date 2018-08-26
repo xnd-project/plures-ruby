@@ -43,14 +43,30 @@
 #include <inttypes.h>
 #include "ndtypes.h"
 
+/* Raise an error stored in $!. Clears it before raising. */
+inline void
+raise_error(void)
+{
+  VALUE exeception = rb_errinfo();
+
+  rb_set_errinfo(Qnil);
+  rb_exc_raise(exeception);
+}
+
+inline void
+set_error(VALUE err, const char * msg)
+{
+  rb_set_errinfo(rb_exc_new2(err, msg));
+}
+
 static inline size_t
 safe_downcast(int64_t size)
 {
 #if SIZE_MAX < INT64_MAX
     if (size > INT32_MAX) {
-        /* rb_raise(rb_eRuntimeError, */
-        /*     "sizes should never exceed INT32_MAX on 32-bit platforms"); */
-        return -1;
+      set_error(rb_eSizeError,
+                "sizes should never exceed INT32_MAX on 32-bit platforms.");
+      return -1;
     }
 #endif
     return (size_t)size;

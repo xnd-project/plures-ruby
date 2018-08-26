@@ -18,6 +18,10 @@ method. So all other functions should simply set the error and the message that 
 want the error to be associated with, and the error is actually raised by the outermost
 function so that the user can properly track where exactly the error came from.
 
+So there shuold be two kinds:
+* Simple errors 
+* Deeper, more complex errors.
+
 
 Links:
 

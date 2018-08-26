@@ -142,7 +142,7 @@ mblock_empty(VALUE type)
                                       rb_ndtypes_const_ndt(type),
                                       XND_OWN_EMBEDDED, &ctx);
   if (mblock_p->xnd == NULL) {
-    // error
+    
   }
   mblock_p->type = type;
 
@@ -156,8 +156,7 @@ get_int(VALUE data, int64_t min, int64_t max)
 
   x = NUM2LL(data);
   if (x < min || x > max) {
-    // TODO: error about integer out of range.
-    return -1;
+    rb_raise(rb_eRangeError, "Number out of range of int64 range.");
   }
 
   return x;
@@ -170,19 +169,18 @@ mblock_init(xnd_t * const x, VALUE data)
   const ndt_t * const t = x->type;
 
   if (!check_invariants(t)) {
-    /* raise error */
-    return -1;
+    rb_raise(rb_eArgError, "invariants in type.");
   }
 
   if (ndt_is_abstract(t)) {
-    // rb_raise(rb_eTypeError, "xnd has abstract type.");
-    return -1;
+    rb_raise(rb_eTypeError, "specified NDT has abstract type.");
   }
 
   /* set missing value. */
   if (ndt_is_optional(t)) {
     if (t->ndim > 0) {
-      return -1;
+      rb_raise(rb_eNotImplementedError,
+               "optional dimensions are not implemented.");
     }
 
     if (data == Qnil) {
@@ -209,23 +207,20 @@ mblock_init(xnd_t * const x, VALUE data)
     for (i = 0; i < shape; i++) {
       xnd_t next = xnd_fixed_dim_next(x, i);
       VALUE rb_index[1] = { LL2NUM(i) };
-      if (mblock_init(&next, rb_ary_aref(1, rb_index, data)) < 0) {
-        // error
-      }
+      
+      mblock_init(&next, rb_ary_aref(1, rb_index, data));
 
       return 0;
     }
   }
   case Int64: {
     int64_t tmp = get_int(data, INT64_MIN, INT64_MAX);
-    if (tmp == -1) { // error occured
-      
-    }
+
     PACK_SINGLE(x->ptr, tmp, int64_t, t->flags);
     return 0;
   }
   default:                      /* TODO: remove after implemented all dtypes. */
-    rb_raise(rb_eNotImplementedError, "invalid type tag.");
+    rb_raise(rb_eNotImplementedError, "invalid type tag (%d).", t->tag);
   }
 }
 
@@ -241,15 +236,8 @@ mblock_from_typed_value(VALUE type, VALUE data)
   MemoryBlockObject *mblock_p;
 
   mblock = mblock_empty(type);
-  
-  GET_MBLOCK(mblock, mblock_p);
-  if (mblock_p == NULL) {
-    
-  }
-  
-  if (mblock_init(&mblock_p->xnd->master, data) < 0) {
-    
-  }
+  GET_MBLOCK(mblock, mblock_p); 
+  mblock_init(&mblock_p->xnd->master, data);
 
   return mblock;
 }
