@@ -45,7 +45,7 @@ describe XND::TypeInference do
   end
   
   context ".type_of" do
-    it "generates correct ndtype for fixed array", focus: true do
+    it "generates correct ndtype for fixed array" do
       value = [
         [1,2,3],
         [5,6,7]

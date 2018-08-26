@@ -5,8 +5,8 @@
 
 #include "ruby_xnd_internal.h"
 
-void gc_guard_unregister(XndObject *xnd);
-void gc_guard_register(XndObject *xnd, VALUE mblock);
-void init_gc_guard(VALUE);
+void rb_xnd_gc_guard_unregister(XndObject *);
+void rb_xnd_gc_guard_register(XndObject *, VALUE);
+void rb_xnd_init_gc_guard(void);
 
 #endif  /* GC_GUARD_H */

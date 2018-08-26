@@ -223,7 +223,6 @@ class XND < RubyXND
       type = TypeInference.type_of data
     end
 
-    puts "TYPE :::: #{type.to_s}"
     super(type, data)
   end
 end

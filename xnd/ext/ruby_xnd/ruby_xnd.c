@@ -36,7 +36,7 @@
 
 #include "ruby_xnd_internal.h"
 
-static VALUE cRubyXND;
+VALUE cRubyXND;
 static VALUE cRubyXND_MBlock;
 static VALUE rb_eNotImplementedError;
 static const rb_data_type_t MemoryBlockObject_type;
@@ -75,7 +75,7 @@ static void
 MemoryBlockObject_dfree(void *self)
 {
   MemoryBlockObject *mblock = (MemoryBlockObject*)self;
-  //
+
   xnd_del(mblock->xnd);
   mblock->xnd = NULL;
   xfree(mblock);
@@ -248,7 +248,7 @@ mblock_from_typed_value(VALUE type, VALUE data)
     
   }
 
-  return WRAP_MBLOCK(cRubyXND_MBlock, mblock_p);
+  return mblock;
 }
 
 /****************************************************************************/
@@ -284,7 +284,7 @@ XndObject_dfree(void *self)
 {
   XndObject *xnd = (XndObject*)self;
 
-  gc_guard_unregister(xnd);
+  rb_xnd_gc_guard_unregister(xnd);
   xfree(xnd);
 }
 
@@ -352,7 +352,7 @@ RubyXND_initialize(VALUE self, VALUE type, VALUE data)
   GET_XND(self, xnd_p);
 
   RubyXND_from_mblock(xnd_p, mblock);
-  gc_guard_register(xnd_p, mblock);
+  rb_xnd_gc_guard_register(xnd_p, mblock);
 
   return self;
 }
@@ -371,5 +371,5 @@ void Init_ruby_xnd(void)
   rb_define_alloc_func(cRubyXND, RubyXND_allocate);
   rb_define_method(cRubyXND, "initialize", RubyXND_initialize, 2);
 
-  init_gc_guard();
+  rb_xnd_init_gc_guard();
 }
