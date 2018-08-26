@@ -39,6 +39,7 @@
 VALUE cRubyXND;
 static VALUE cRubyXND_MBlock;
 static VALUE rb_eNotImplementedError;
+static VALUE rb_eMallocError;
 static const rb_data_type_t MemoryBlockObject_type;
 
 VALUE mRubyXND_GCGuard;
@@ -200,7 +201,9 @@ mblock_init(xnd_t * const x, VALUE data)
     Check_Type(data, T_ARRAY);
 
     if (RARRAY_LEN(data) != shape) {
-      // TODO: error
+      rb_raise(rb_eArgError,
+               "Input length (%d) and type length (%d) mismatch.",
+               RARRAY_LEN(data), shape);
     }
 
     for (i = 0; i < shape; i++) {
@@ -325,9 +328,6 @@ RubyXND_allocate(VALUE klass)
   XndObject *xnd;
 
   xnd = ZALLOC(XndObject);
-  if (xnd == NULL) {
-    
-  }
 
   xnd->mblock = NULL;
   xnd->type = NULL;
@@ -357,6 +357,17 @@ RubyXND_initialize(VALUE self, VALUE type, VALUE data)
   return self;
 }
 
+/* Return the ndtypes object of this xnd object. */
+static VALUE
+RubyXND_type(VALUE self)
+{
+  XndObject *xnd_p;
+
+  GET_XND(self, xnd_p);
+
+  return xnd_p->type;
+}
+
 void Init_ruby_xnd(void)
 {
   /* init classes */
@@ -366,10 +377,14 @@ void Init_ruby_xnd(void)
 
   /* init errors */
   rb_eNotImplementedError = rb_define_class("NotImplementedError", rb_eScriptError);
+  
 
   /* initializers */
   rb_define_alloc_func(cRubyXND, RubyXND_allocate);
   rb_define_method(cRubyXND, "initialize", RubyXND_initialize, 2);
+
+  /* instance methods */
+  rb_define_method(cRubyXND, "type", RubyXND_type, 0);
 
   rb_xnd_init_gc_guard();
 }
