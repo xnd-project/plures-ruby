@@ -55,6 +55,22 @@ describe XND do
     end
   end
 
+  context "#==" do
+    it "returns true if elements of XND objects are equal" do
+      x1 = XND.new [[1,2,3], [4,5,6]]
+      x2 = XND.new [[1,2,3], [4,5,6]]
+
+      expect(x1 == x2).to eq(true)
+    end
+
+    it "returns false if elements of XND objects are unequal" do
+      x1 = XND.new [[1,2,3], [4,5,6]]
+      x2 = XND.new [[1,2,3], [4,53,2]]
+
+      expect(x1 == x2).to eq(false)      
+    end
+  end
+
   context "#to_a" do
     it "returns Ruby Array for FixedDim XND array" do
       

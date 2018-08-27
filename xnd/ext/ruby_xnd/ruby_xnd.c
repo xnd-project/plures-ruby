@@ -254,6 +254,7 @@ typedef struct XndObject {
   xnd_t xnd;                 /* typed view, does not own anything */
 } XndObject;
 
+#define XND(xnd_p) (&(((XndObject *)xnd_p)->xnd))
 #define GET_XND(obj, xnd_p) do {                        \
     TypedData_Get_Struct((obj), XndObject,              \
                          &XndObject_type, (xnd_p));     \
@@ -369,7 +370,7 @@ RubyXND_initialize(VALUE self, VALUE type, VALUE data)
 
 /* Return the ndtypes object of this xnd object. */
 static VALUE
-RubyXND_type(VALUE self)
+XND_type(VALUE self)
 {
   XndObject *xnd_p;
 
@@ -480,7 +481,7 @@ convert_key(xnd_index_t *indices, int *len, int argc, VALUE *argv)
 
 /* Implement the #[] Ruby method. */
 static VALUE
-RubyXND_array_aref(int argc, VALUE *argv, VALUE self)
+XND_array_aref(int argc, VALUE *argv, VALUE self)
 {
   NDT_STATIC_CONTEXT(ctx);
   xnd_index_t indices[NDT_MAX_DIM];
@@ -507,6 +508,31 @@ RubyXND_array_aref(int argc, VALUE *argv, VALUE self)
   return RubyXND_view_move_type(xnd_p, &x);
 }
 
+/* Implementation for #== method. 
+
+   @param other Other Ruby object to compare with.
+   @return VALUE [TrueClass|FalseClass]
+*/
+static VALUE
+XND_eqeq(VALUE self, VALUE other)
+{
+  NDT_STATIC_CONTEXT(ctx);
+  XndObject *left_p, *right_p;
+  int r;
+
+  GET_XND(self, left_p);
+  GET_XND(other, right_p);
+
+  r = xnd_equal(XND(left_p), XND(right_p), &ctx);
+
+  if (r == 0) {
+    return Qfalse;
+  }
+  else {
+    return Qtrue;
+  }
+}
+
 void Init_ruby_xnd(void)
 {
   /* init classes */
@@ -523,8 +549,9 @@ void Init_ruby_xnd(void)
   rb_define_method(cRubyXND, "initialize", RubyXND_initialize, 2);
   
   /* instance methods */
-  rb_define_method(cXND, "type", RubyXND_type, 0);
-  rb_define_method(cXND, "[]", RubyXND_array_aref, -1);
-
+  rb_define_method(cXND, "type", XND_type, 0);
+  rb_define_method(cXND, "[]", XND_array_aref, -1);
+  rb_define_method(cXND, "==", XND_eqeq, 1);
+  
   rb_xnd_init_gc_guard();
 }
