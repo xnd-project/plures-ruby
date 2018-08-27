@@ -46,7 +46,7 @@ describe XND do
   context "#[]" do
     it "returns single number slice for 1D array/1 number" do
       xnd = XND.new([1,2,3,4])
-      expect(xnd[1]).to eq(XND.new[2])
+      expect(xnd[1]).to eq(XND.new([2]))
     end
 
     it "returns single number slice for 2D array and 2 indices" do

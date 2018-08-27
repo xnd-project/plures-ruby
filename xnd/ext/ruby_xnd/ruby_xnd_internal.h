@@ -38,9 +38,11 @@
 #ifndef RUBY_XND_INTERNAL_H
 #define RUBY_XND_INTERNAL_H
 
+#include "ruby.h"
+#include "ruby_ndtypes.h"
 #include "ruby_xnd.h"
 #include "util.h"
-#include "ruby_ndtypes.h"
+
 
 extern VALUE mRubyXND_GCGuard;
 

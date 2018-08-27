@@ -35,6 +35,7 @@
  */
 
 #include "ruby_xnd_internal.h"
+#include "xnd.h"
 
 VALUE cRubyXND;
 static VALUE cRubyXND_MBlock;
@@ -165,7 +166,6 @@ get_int(VALUE data, int64_t min, int64_t max)
 static int
 mblock_init(xnd_t * const x, VALUE data)
 {
-  NDT_STATIC_CONTEXT(ctx);
   const ndt_t * const t = x->type;
 
   if (!check_invariants(t)) {
@@ -200,7 +200,7 @@ mblock_init(xnd_t * const x, VALUE data)
 
     if (RARRAY_LEN(data) != shape) {
       rb_raise(rb_eArgError,
-               "Input length (%d) and type length (%d) mismatch.",
+               "Input length (%ld) and type length (%ld) mismatch.",
                RARRAY_LEN(data), shape);
     }
 
@@ -317,8 +317,8 @@ RubyXND_allocate(VALUE klass)
 
   xnd = ZALLOC(XndObject);
 
-  xnd->mblock = NULL;
-  xnd->type = NULL;
+  xnd->mblock = 0;
+  xnd->type = 0;
   xnd->xnd.bitmap.data = NULL;
   xnd->xnd.bitmap.size = 0;
   xnd->xnd.bitmap.next = NULL;
@@ -370,17 +370,42 @@ RubyXND_view_move_type(XndObject *xnd_p, xnd_t *x)
 }
 
 static uint8_t
-convert_single(xnt_index_t *indices, VALUE obj)
+convert_single(xnd_index_t *key, VALUE obj)
 {
-  if (RB_TYPE_P(obj, T_NUMERIC)) {
-    
+  if (RB_TYPE_P(obj, T_FIXNUM)) {
+    int64_t i = NUM2LL(obj);
+
+    key->tag = Index;
+    key->Index = i;
+
+    return KEY_INDEX;
   }
   else if (RB_TYPE_P(obj, T_STRING)) {
-    
+    const char *s = StringValuePtr(obj);
+
+    key->tag = FieldName;
+    key->FieldName = s;
+
+    return KEY_FIELD;
   }
-  else if (RB_TYPE_P(obj, T_RANGE)) {
+  else if (CLASS_OF(obj) == rb_cRange) {
+    size_t begin = NUM2LL(rb_funcall(obj, rb_intern("begin"), 0, NULL));
+    size_t end = NUM2LL(rb_funcall(obj, rb_intern("end"), 0, NULL));
+    /* FIXME: As of 27 Aug. 2018 Ruby trunk implements step as a property of
+       Range and XND will support it as and when it is available. Maybe for 
+       now we can implement a #step iterator in a separate method.
+    */
+    size_t step = 1; 
+
+    key->tag = Slice;
+    key->Slice.start = begin;
+    key->Slice.stop = end;
+    key->Slice.step = step;
+
+    return KEY_SLICE;
   }
   else {
+    rb_raise(rb_eArgError, "wrong object specified in index.");
   }
 }
 
@@ -410,6 +435,9 @@ convert_key(xnd_index_t *indices, int *len, int argc, VALUE *argv)
   *len = 1;
   return convert_single(indices, argv[0]);
 }
+
+/* xnd_t xnd_subscript(xnd_t *x, xnd_index_t indices[], int len, */
+/*                             ndt_context_t *ctx); */
 
 /* Implement the #[] Ruby method. */
 static VALUE

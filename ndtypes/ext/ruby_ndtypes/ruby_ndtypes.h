@@ -11,6 +11,9 @@ extern "C" {
 } /* satisfy cc-mode */
 #endif
 
+#include "ruby.h"
+#include "ndtypes.h"
+
 /* Public interface for ndtypes. */
 typedef struct NdtObject NdtObject;
 extern VALUE cNDTypes;
