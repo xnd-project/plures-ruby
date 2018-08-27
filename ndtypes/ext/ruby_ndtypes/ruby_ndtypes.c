@@ -120,13 +120,18 @@ rbuf_ndt_meta(VALUE ndt)
   return rbuf_p->m;
 }
 
-/* Allocate an NDT pointer and return a Ruby object wrapped within the object. */
+/* Allocate an NdtObject, initialize members and return wrapped as a Ruby object. */
 static VALUE
-NdtObject_alloc(NdtObject *ndt)
+NdtObject_alloc(void)
 {
-  VALUE obj;
-  
-  return MAKE_NDT(obj, ndt);
+  NdtObject *ndt_p;
+
+  ndt_p = ZALLOC(NdtObject);
+
+  ndt_p->rbuf = 0;
+  ndt_p->ndt = NULL;
+
+  return MAKE_NDT(cNDTypes, ndt_p);
 }
 
 /* GC mark the NdtObject struct. */
@@ -145,7 +150,7 @@ NdtObject_dfree(void * self)
 {
   NdtObject * ndt = (NdtObject*)self;
   
-  gc_guard_unregister(ndt);
+  rb_ndtypes_gc_guard_unregister(ndt);
   xfree(ndt);
 }
 
@@ -175,22 +180,6 @@ NDTypes_allocate(VALUE self)
   NdtObject *ndt;
   
   return MAKE_NDT(self, ndt);
-}
-
-/* Helper function for allocating and registering NDT object GC guard hash. */
-static NdtObject *
-NDTypes_alloc_and_register(VALUE self)
-{
-  NdtObject *ndt;
-
-  GET_NDT(self, ndt);
-  RBUF(ndt) = rbuf_allocate();
-  if (RBUF(ndt) == NULL) {
-    /* check if ndt rbuf allocation was successful. raise error if not. */
-  }
-  gc_guard_register(ndt, RBUF(ndt));
-
-  return ndt;
 }
 /******************************************************************************/
 
@@ -223,7 +212,7 @@ NDTYPES_BOOL_FUNC(ndt_is_f_contiguous)
 static VALUE
 NDTypes_initialize(VALUE self, VALUE type)
 {
-  NdtObject *ndt;
+  NdtObject *ndt_p;
   VALUE offsets = Qnil;
   const char *cp;
 
@@ -237,11 +226,16 @@ NDTypes_initialize(VALUE self, VALUE type)
   if (cp == NULL) {
     
   }
-    
-  ndt = NDTypes_alloc_and_register(self);
 
-  NDT(ndt) = ndt_from_string_fill_meta(rbuf_ndt_meta(self), cp, &ctx);
-  if (NDT(ndt) == NULL) {
+  GET_NDT(self, ndt_p);
+  RBUF(ndt_p) = rbuf_allocate();
+  if (RBUF(ndt_p) == NULL) {
+    
+  }
+  rb_ndtypes_gc_guard_register(ndt_p, RBUF(ndt_p));
+
+  NDT(ndt_p) = ndt_from_string_fill_meta(rbuf_ndt_meta(self), cp, &ctx);
+  if (NDT(ndt_p) == NULL) {
     
   }
 
@@ -311,7 +305,7 @@ NDTypes_s_deserialize(VALUE klass, VALUE str)
 
   cp = StringValuePtr(str);
   if (cp == NULL) {
-    /* TODO: cannot get string pointer. */
+    // raise
   }
   len = RSTRING_LEN(str);
 
@@ -329,7 +323,7 @@ NDTypes_s_deserialize(VALUE klass, VALUE str)
 
   rbuf = WRAP_RBUF(cNDTypes_RBuf, rbuf_p);
   RBUF(ndt_p) = rbuf;
-  gc_guard_register(ndt_p, rbuf);
+  rb_ndtypes_gc_guard_register(ndt_p, rbuf);
   ndt = WRAP_NDT(cNDTypes, ndt_p);
   
   return ndt;
@@ -434,6 +428,38 @@ rb_ndtypes_const_ndt(VALUE ndt)
   return ndt_p->ndt;
 }
 
+/* Function for taking a source type and moving it accross the subtree.
+
+   @param src NDTypes Ruby object of the source XND object.
+   @param t Pointer to type of the view of XND object.
+*/
+VALUE
+rb_ndtypes_move_subtree(VALUE src, ndt_t *t)
+{
+  NDT_STATIC_CONTEXT(ctx);
+  VALUE dest;
+  NdtObject *dest_p, *src_p;
+
+  if (!NDT_CHECK_TYPE(src)) {
+    rb_raise(rb_eArgError, "expected NDT object from view src.");
+  }
+
+  dest = NdtObject_alloc();
+  
+  GET_NDT(dest, dest_p);
+  NDT(dest_p) = ndt_copy(t, &ctx);
+  if (NDT(dest_p) == NULL) {
+    rb_raise(rb_eNoMemError, "could not allocate memory for ndt_copy().");
+  }
+
+  GET_NDT(src, src_p);
+  RBUF(dest_p) = RBUF(src_p);
+
+  rb_ndtypes_gc_guard_register(dest_p, RBUF(dest_p));
+
+  return dest;
+}
+
 void Init_ruby_ndtypes(void)
 {
   NDT_STATIC_CONTEXT(ctx);
@@ -474,5 +500,5 @@ void Init_ruby_ndtypes(void)
   rb_define_const(cNDTypes, "MAX_DIM", INT2NUM(NDT_MAX_DIM));
 
   /* GC guard init */
-  init_gc_guard();
+  rb_ndtypes_init_gc_guard();
 }

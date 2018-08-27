@@ -38,10 +38,12 @@
 #include "xnd.h"
 
 VALUE cRubyXND;
+VALUE cXND;
 static VALUE cRubyXND_MBlock;
 static VALUE rb_eNotImplementedError;
 static VALUE rb_eMallocError;
 static const rb_data_type_t MemoryBlockObject_type;
+static const rb_data_type_t XndObject_type;
 
 VALUE mRubyXND_GCGuard;
 
@@ -248,7 +250,7 @@ mblock_from_typed_value(VALUE type, VALUE data)
 
 typedef struct XndObject {
   VALUE mblock;              /* owner of the primary type and memory block */
-  VALUE type;                /* owner of the current type */
+  VALUE type;                /* owner of the current type. lives and dies with this obj. */
   xnd_t xnd;                 /* typed view, does not own anything */
 } XndObject;
 
@@ -259,6 +261,26 @@ typedef struct XndObject {
 #define MAKE_XND(klass, xnd_p) TypedData_Make_Struct(klass, XndObject, \
                                                     &XndObject_type, xnd_p)
 #define WRAP_XND(klass, xnd_p) TypedData_Wrap_Struct(klass, &XndObject_type, xnd_p)
+
+/* Allocate an XndObject and return wrapped in a Ruby object. */
+static VALUE
+XndObject_alloc(void)
+{
+  XndObject *xnd;
+
+  xnd = ZALLOC(XndObject);
+
+  xnd->mblock = 0;
+  xnd->type = 0;
+  xnd->xnd.bitmap.data = NULL;
+  xnd->xnd.bitmap.size = 0;
+  xnd->xnd.bitmap.next = NULL;
+  xnd->xnd.index = 0;
+  xnd->xnd.type  = NULL;
+  xnd->xnd.ptr = NULL;
+
+  return WRAP_XND(cXND, xnd);
+}
 
 /* Mark Ruby objects within XndObject. */
 static void
@@ -363,10 +385,27 @@ RubyXND_type(VALUE self)
 #define KEY_SLICE 4
 #define KEY_ERROR 128
 
+/* 
+   @param src_p Pointer to the source XND object from which view is being created.
+   @param x Metadata for creating the view.
+ */
 static VALUE
-RubyXND_view_move_type(XndObject *xnd_p, xnd_t *x)
+RubyXND_view_move_type(XndObject *src_p, xnd_t *x)
 {
-  
+  XndObject *view_p;
+  VALUE type, view;
+
+  type = rb_ndtypes_move_subtree(src_p->type, (ndt_t *)x->type);
+  view = XndObject_alloc();
+  GET_XND(view, view_p);
+
+  view_p->mblock = src_p->mblock;
+  view_p->type = type;
+  view_p->xnd = *x;
+
+  rb_xnd_gc_guard_register(view_p, view_p->mblock);
+
+  return view;
 }
 
 static uint8_t
@@ -472,6 +511,7 @@ void Init_ruby_xnd(void)
 {
   /* init classes */
   cRubyXND = rb_define_class("RubyXND", rb_cObject);
+  cXND = rb_define_class("XND", cRubyXND);
   cRubyXND_MBlock = rb_define_class_under(cRubyXND, "MBlock", rb_cObject);
   mRubyXND_GCGuard = rb_define_module_under(cRubyXND, "GCGuard");
 
@@ -481,10 +521,10 @@ void Init_ruby_xnd(void)
   /* initializers */
   rb_define_alloc_func(cRubyXND, RubyXND_allocate);
   rb_define_method(cRubyXND, "initialize", RubyXND_initialize, 2);
-  rb_define_method(cRubyXND, "[]", RubyXND_array_aref, -1);
-
+  
   /* instance methods */
-  rb_define_method(cRubyXND, "type", RubyXND_type, 0);
+  rb_define_method(cXND, "type", RubyXND_type, 0);
+  rb_define_method(cXND, "[]", RubyXND_array_aref, -1);
 
   rb_xnd_init_gc_guard();
 }

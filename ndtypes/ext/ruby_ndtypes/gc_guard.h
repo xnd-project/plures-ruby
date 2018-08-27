@@ -5,8 +5,8 @@
 
 #include "ruby_ndtypes_internal.h"
 
-void gc_guard_unregister(NdtObject *ndt);
-void gc_guard_register(NdtObject *ndt, VALUE rbuf);
-void init_gc_guard(VALUE cNDTypes);
+void rb_ndtypes_gc_guard_unregister(NdtObject *ndt);
+void rb_ndtypesgc_guard_register(NdtObject *ndt, VALUE rbuf);
+void rb_ndtypes_init_gc_guard(VALUE cNDTypes);
 
 #endif  /* GC_GUARD_H */
