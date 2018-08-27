@@ -5,7 +5,6 @@ describe XND do
     it "creates a fixed array" do
       o = XND.new([[1,2,3], [2,3,4]])
       expect(o.type).to eq(NDTypes.new("2 * 3 * int64"))
-      expect(o[0,0]).to eq(XND.new([1]))
     end
 
     it "accepts a type for fixed array" do
@@ -40,6 +39,36 @@ describe XND do
     end
 
     it "can import data from narray objects" do
+      
+    end
+  end
+
+  context "#[]" do
+    it "returns single number slice for 1D array/1 number" do
+      xnd = XND.new([1,2,3,4])
+      expect(xnd[1]).to eq(XND.new[2])
+    end
+
+    it "returns single number slice for 2D array and 2 indices" do
+      xnd = XND.new([[1,2,3], [4,5,6]])
+      expect(xnd[0,0]).to eq(XND.new([1]))      
+    end
+  end
+
+  context "#to_a" do
+    it "returns Ruby Array for FixedDim XND array" do
+      
+    end
+  end
+
+  context "#to_s" do
+    it "returns String representation" do
+      
+    end
+  end
+
+  context "#size" do
+    it "returns the size of the XND array" do
       
     end
   end

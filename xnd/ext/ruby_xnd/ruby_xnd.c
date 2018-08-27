@@ -356,6 +356,90 @@ RubyXND_type(VALUE self)
   return xnd_p->type;
 }
 
+/*************************** slicing functions ********************************/
+
+#define KEY_INDEX 1
+#define KEY_FIELD 2
+#define KEY_SLICE 4
+#define KEY_ERROR 128
+
+static VALUE
+RubyXND_view_move_type(XndObject *xnd_p, xnd_t *x)
+{
+  
+}
+
+static uint8_t
+convert_single(xnt_index_t *indices, VALUE obj)
+{
+  if (RB_TYPE_P(obj, T_NUMERIC)) {
+    
+  }
+  else if (RB_TYPE_P(obj, T_STRING)) {
+    
+  }
+  else if (RB_TYPE_P(obj, T_RANGE)) {
+  }
+  else {
+  }
+}
+
+static uint8_t
+convert_key(xnd_index_t *indices, int *len, int argc, VALUE *argv)
+{
+  uint8_t flags = 0;
+  VALUE x;
+
+  if (argc > 1) {
+    if (argc > NDT_MAX_DIM) {
+      rb_raise(rb_eArgError, "too many indices %d.", argc);
+    }
+
+    for (size_t i = 0; i < argc; i++) {
+      x = argv[i];
+      flags |= convert_single(indices+i, x);
+      if (flags & KEY_ERROR) {
+        return KEY_ERROR;
+      }
+    }
+
+    *len = argc;
+    return flags;
+  }
+
+  *len = 1;
+  return convert_single(indices, argv[0]);
+}
+
+/* Implement the #[] Ruby method. */
+static VALUE
+RubyXND_array_aref(int argc, VALUE *argv, VALUE self)
+{
+  NDT_STATIC_CONTEXT(ctx);
+  xnd_index_t indices[NDT_MAX_DIM];
+  xnd_t x;
+  int len;
+  uint8_t flags;
+  XndObject *xnd_p;
+
+  if (argc == 0) {
+    rb_raise(rb_eArgError, "expected atleast one argument for #[].");
+  }
+
+  flags = convert_key(indices, &len, argc, argv);
+  if (flags & KEY_ERROR) {
+    rb_raise(rb_eArgError, "something is wrong with the array key.");
+  }
+  
+  GET_XND(self, xnd_p);
+  x = xnd_subscript(&xnd_p->xnd, indices, len, &ctx);
+  if (x.ptr == NULL) {
+    // set error as per ctx.
+  }
+
+  return RubyXND_view_move_type(xnd_p, &x);
+}
+
 void Init_ruby_xnd(void)
 {
   /* init classes */
@@ -366,10 +450,10 @@ void Init_ruby_xnd(void)
   /* init errors */
   rb_eNotImplementedError = rb_define_class("NotImplementedError", rb_eScriptError);
   
-
   /* initializers */
   rb_define_alloc_func(cRubyXND, RubyXND_allocate);
   rb_define_method(cRubyXND, "initialize", RubyXND_initialize, 2);
+  rb_define_method(cRubyXND, "[]", RubyXND_array_aref, -1);
 
   /* instance methods */
   rb_define_method(cRubyXND, "type", RubyXND_type, 0);
