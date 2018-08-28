@@ -38,17 +38,24 @@
 #ifndef RUBY_XND_INTERNAL_H
 #define RUBY_XND_INTERNAL_H
 
+#define XND_DEBUG 1
+
+#ifdef XND_DEBUG
+#include <assert.h>
+#endif
+
 #include "ruby.h"
 #include "ruby_ndtypes.h"
 #include "ruby_xnd.h"
 #include "util.h"
-
 
 extern VALUE mRubyXND_GCGuard;
 
 /* typedefs */
 typedef struct XndObject XndObject;
 typedef struct MemoryBlockObject MemoryBlockObject;
+
+#include "gc_guard.h"
 
 /* macros */
 #if SIZEOF_LONG == SIZEOF_VOIDP

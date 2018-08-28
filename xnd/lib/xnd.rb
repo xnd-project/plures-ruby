@@ -33,6 +33,14 @@ require "ruby_xnd.so"
 
 require 'xnd/version'
 
+class RubyXND
+  class Ellipsis
+    def to_s
+      "..."
+    end
+  end
+end
+
 class XND < RubyXND
   MAX_DIM = NDTypes::MAX_DIM
   
@@ -225,4 +233,6 @@ class XND < RubyXND
 
     super(type, data)
   end
+
+  alias :to_a :value
 end

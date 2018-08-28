@@ -42,10 +42,20 @@ VALUE cXND;
 static VALUE cRubyXND_MBlock;
 static VALUE rb_eNotImplementedError;
 static VALUE rb_eMallocError;
+static VALUE cRubyXND_Ellipsis;
 static const rb_data_type_t MemoryBlockObject_type;
 static const rb_data_type_t XndObject_type;
 
 VALUE mRubyXND_GCGuard;
+
+/****************************************************************************/
+/*                           Singletons                                     */
+/****************************************************************************/
+static VALUE
+xnd_ellipsis(void)
+{
+  return rb_funcall(cRubyXND_Ellipsis, rb_intern("initialize"), 0, NULL);
+}
 
 /****************************************************************************/
 /*                           MemoryBlock Object                             */
@@ -366,8 +376,16 @@ RubyXND_initialize(VALUE self, VALUE type, VALUE data)
   RubyXND_from_mblock(xnd_p, mblock);
   rb_xnd_gc_guard_register(xnd_p, mblock);
 
+#ifdef XND_DEBUG
+  assert(XND(xnd_p)->type);
+  assert(XND(xnd_p)->ptr);
+#endif
+
   return self;
 }
+
+
+/*************************** object properties ********************************/
 
 /* Return the ndtypes object of this xnd object. */
 static VALUE
@@ -378,6 +396,75 @@ XND_type(VALUE self)
   GET_XND(self, xnd_p);
 
   return xnd_p->type;
+}
+
+static VALUE
+_XND_value(const xnd_t * const xnd_p, const int64_t maxshape)
+{
+  const ndt_t * const t = xnd_p->type;
+
+#ifdef XND_DEBUG
+  assert(t);
+  assert(xnd_p);
+#endif
+
+  if (!ndt_is_concrete(t)) {
+    rb_raise(rb_eTypeError, "type must be concrete for returning value.");
+  }
+
+  /* bitmap access needs linear index. */
+  if (xnd_is_na(xnd_p)) {
+    return Qnil;
+  }
+
+  switch (t->tag) {
+  case FixedDim: {
+    VALUE array, v;
+    int64_t shape, i;
+
+    shape = t->FixedDim.shape;
+
+    if (shape > maxshape) {
+      shape = maxshape;
+    }
+
+    array = array_new(shape);
+
+    for (i = 0; i < shape; i++) {
+      if (i == maxshape-1) {
+        rb_ary_store(array, i, xnd_ellipsis());
+        break;
+      }
+
+      const xnd_t next = xnd_fixed_dim_next(xnd_p, t);
+      v = _XND_value(&next, maxshape);
+      rb_ary_store(array, i, v);
+    }
+
+    return array;
+  }
+    
+  case Int64: {
+    int64_t temp;
+    UNPACK_SINGLE(temp, xnd_p->ptr, int64_t, t->flags);
+    return LL2NUM(temp);
+  }
+
+  default: {
+    rb_raise(rb_eArgError, "cannot convert this type to Array.");
+  }
+  }
+}
+
+/* Return the value of this xnd object. Aliased to to_a. */
+static VALUE
+XND_value(VALUE self)
+{
+  XndObject *xnd_p;
+
+  GET_XND(self, xnd_p);
+
+  return _XND_value(XND(xnd_p), INT64_MAX);
 }
 
 /*************************** slicing functions ********************************/
@@ -577,6 +664,7 @@ void Init_ruby_xnd(void)
   cRubyXND = rb_define_class("RubyXND", rb_cObject);
   cXND = rb_define_class("XND", cRubyXND);
   cRubyXND_MBlock = rb_define_class_under(cRubyXND, "MBlock", rb_cObject);
+  cRubyXND_Ellipsis = rb_define_class_under(cRubyXND, "Ellipsis", rb_cObject);
   mRubyXND_GCGuard = rb_define_module_under(cRubyXND, "GCGuard");
 
   /* init errors */
@@ -588,6 +676,7 @@ void Init_ruby_xnd(void)
   
   /* instance methods */
   rb_define_method(cXND, "type", XND_type, 0);
+  rb_define_method(cXND, "value", XND_value, 0);
   rb_define_method(cXND, "[]", XND_array_aref, -1);
   rb_define_method(cXND, "==", XND_eqeq, 1);
   rb_define_method(cXND, "<=>", XND_spaceship, 1);

@@ -108,6 +108,20 @@ describe XND do
 
       expect(x.to_a).to eq([1,2,3,4])
     end
+
+    it "returns multi-dim array" do
+      x = XND.new [[1,2,3], [4,5,6]]
+
+      expect(x.to_a).to eq([[1,2,3], [4,5,6]])
+    end
+  end
+
+  context "#type" do
+    it "returns the type of the XND array" do
+      x = XND.new [[1,2,3], [4,5,6]], type: NDT.new("2 * 3 * int64")
+
+      expect(x.type).to eq(NDT.new("2 * 3 * int64"))
+    end
   end
 
   context "#to_s" do
