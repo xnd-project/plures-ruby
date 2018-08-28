@@ -53,27 +53,60 @@ describe XND do
       xnd = XND.new([[1,2,3], [4,5,6]])
       expect(xnd[0,0]).to eq(XND.new([1]))      
     end
+
+    it "returns row for single index in 2D array" do
+      x = XND.new [[1,2,3], [4,5,6], [7,8,9]]
+      expect(x[1]).to eq(XND.new([4,5,6]))
+    end
   end
 
-  context "#==" do
-    it "returns true if elements of XND objects are equal" do
-      x1 = XND.new [[1,2,3], [4,5,6]]
-      x2 = XND.new [[1,2,3], [4,5,6]]
+  context "#strict_equal" do
+    before do
+      @x = XND.new [1,2,3,4]      
+    end
+    
+    it "tests simple arrays" do
+      x1 = XND.new [1,2,3,4]
 
-      expect(x1 == x2).to eq(true)
+      expect_strict_equal @x, x1
     end
 
-    it "returns false if elements of XND objects are unequal" do
-      x1 = XND.new [[1,2,3], [4,5,6]]
-      x2 = XND.new [[1,2,3], [4,53,2]]
+    it "tests different shape and/or data" do
+      expect_strict_unequal @x, XND.new([1,2,3])
+      expect_strict_unequal @x, XND.new([1,2,3,100])
+      expect_strict_unequal @x, XND.new([1,2,3,4,5])
+    end
 
-      expect(x1 == x2).to eq(false)      
+    it "tests different shape" do
+      expect_strict_unequal @x, XND.new([1,2,3])
+      expect_strict_unequal @x, XND.new([[1,2,3,4]])
+      expect_strict_unequal @x, XND.new([[1,2], [3,4]])
+    end
+
+    it "tests simple multidim array" do
+      x = XND.new([[1,2,3], [4,5,6], [7,8,9], [10,11,12]])
+      y = XND.new([[1,2,3], [4,5,6], [7,8,9], [10,11,12]])
+
+      expect_strict_equal x, y
+    end
+
+    it "tests slices" do
+      x = XND.new([[1,2,3], [4,5,6], [7,8,9], [10,11,12]])
+      y = XND.new([1,2,3])
+
+      expect_strict_equal x[0], y
+
+      y = XND.new [1,4,7,10]
+
+      expect_strict_equal x[0..Float::INFINITY,0], y
     end
   end
 
   context "#to_a" do
-    it "returns Ruby Array for FixedDim XND array" do
-      
+    it "returns simple array" do
+      x = XND.new [1,2,3,4]
+
+      expect(x.to_a).to eq([1,2,3,4])
     end
   end
 

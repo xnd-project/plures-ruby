@@ -255,6 +255,7 @@ typedef struct XndObject {
 } XndObject;
 
 #define XND(xnd_p) (&(((XndObject *)xnd_p)->xnd))
+#define XND_CHECK_TYPE(xnd) (CLASS_OF(xnd) == cXND)
 #define GET_XND(obj, xnd_p) do {                        \
     TypedData_Get_Struct((obj), XndObject,              \
                          &XndObject_type, (xnd_p));     \
@@ -525,11 +526,48 @@ XND_eqeq(VALUE self, VALUE other)
 
   r = xnd_equal(XND(left_p), XND(right_p), &ctx);
 
-  if (r == 0) {
-    return Qfalse;
+  if (r == 1) {
+    return Qtrue;
   }
   else {
+    return Qfalse;
+  }
+}
+
+/* Implement Ruby spaceship operator. */
+static VALUE
+XND_spaceship(VALUE self, VALUE other)
+{
+  rb_raise(rb_eNotImpError, "spaceship not implemented yet.");
+
+  return Qnil;
+}
+
+static VALUE
+XND_strict_equal(VALUE self, VALUE other)
+{
+  NDT_STATIC_CONTEXT(ctx);
+  XndObject *left_p, *right_p;
+  int r;
+
+  if (!XND_CHECK_TYPE(other)) {
+    rb_raise(rb_eArgError, "argument type has to be XND.");
+  }
+  
+  GET_XND(self, left_p);
+  GET_XND(other, right_p);
+
+  r = xnd_strict_equal(XND(left_p), XND(right_p), &ctx);
+  if (r < 0) {
+    rb_raise(rb_eRuntimeError, "r is less than 0.");
+    /* TODO: change this to ctx-specific error. */
+  }
+
+  if (r) {
     return Qtrue;
+  }
+  else {
+    return Qfalse;
   }
 }
 
@@ -552,6 +590,8 @@ void Init_ruby_xnd(void)
   rb_define_method(cXND, "type", XND_type, 0);
   rb_define_method(cXND, "[]", XND_array_aref, -1);
   rb_define_method(cXND, "==", XND_eqeq, 1);
+  rb_define_method(cXND, "<=>", XND_spaceship, 1);
+  rb_define_method(cXND, "strict_equal", XND_strict_equal, 1);
   
   rb_xnd_init_gc_guard();
 }
