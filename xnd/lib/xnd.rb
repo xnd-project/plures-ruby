@@ -189,7 +189,7 @@ class XND < RubyXND
 
         data = acc[max_level]
         shapes = acc[0...max_level].reverse
-
+p
         [data, shapes]
       end
 

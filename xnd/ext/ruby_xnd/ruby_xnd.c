@@ -602,6 +602,10 @@ XND_eqeq(VALUE self, VALUE other)
   XndObject *left_p, *right_p;
   int r;
 
+  if (!XND_CHECK_TYPE(other)) {
+    rb_raise(rb_eArgError, "other object must be XND type.");
+  }
+
   GET_XND(self, left_p);
   GET_XND(other, right_p);
 
@@ -624,6 +628,7 @@ XND_spaceship(VALUE self, VALUE other)
   return Qnil;
 }
 
+/* XND#strict_equal */
 static VALUE
 XND_strict_equal(VALUE self, VALUE other)
 {
