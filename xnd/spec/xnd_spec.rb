@@ -46,6 +46,7 @@ describe XND do
   context "#[]" do
     it "returns single number slice for 1D array/1 number" do
       xnd = XND.new([1,2,3,4])
+      puts xnd[1].to_a
       expect(xnd[1]).to eq(XND.new([2]))
     end
 
@@ -58,9 +59,14 @@ describe XND do
       x = XND.new [[1,2,3], [4,5,6], [7,8,9]]
       expect(x[1]).to eq(XND.new([4,5,6]))
     end
+
+    it "returns single column in 2D array" do
+      x = XND.new [[1,2,3], [4,5,6], [7,8,9]]
+      expect(x[0..Float::INFINITY, 0]).to eq(XND.new([1,4,7]))
+    end
   end
 
-  context "#strict_equal", focus: true do
+  context "#strict_equal" do
     before do
       @x = XND.new [1,2,3,4]      
     end
@@ -102,7 +108,7 @@ describe XND do
     end
   end
 
-  context "#to_a", focus: true do
+  context "#to_a" do
     it "returns simple array" do
       x = XND.new [1,2,3,4]
 
