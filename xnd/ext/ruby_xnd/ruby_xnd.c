@@ -41,7 +41,6 @@ VALUE cRubyXND;
 VALUE cXND;
 static VALUE cRubyXND_MBlock;
 static VALUE rb_eNotImplementedError;
-static VALUE rb_eMallocError;
 static VALUE cRubyXND_Ellipsis;
 static const rb_data_type_t MemoryBlockObject_type;
 static const rb_data_type_t XndObject_type;
@@ -219,11 +218,10 @@ mblock_init(xnd_t * const x, VALUE data)
     for (i = 0; i < shape; i++) {
       xnd_t next = xnd_fixed_dim_next(x, i);
       VALUE rb_index[1] = { LL2NUM(i) };
-      
-      mblock_init(&next, rb_ary_aref(1, rb_index, data));
 
-      return 0;
+      mblock_init(&next, rb_ary_aref(1, rb_index, data));
     }
+    return 0;
   }
   case Int64: {
     int64_t tmp = get_int(data, INT64_MIN, INT64_MAX);
@@ -423,7 +421,6 @@ _XND_value(const xnd_t * const xnd_p, const int64_t maxshape)
     int64_t shape, i;
 
     shape = t->FixedDim.shape;
-
     if (shape > maxshape) {
       shape = maxshape;
     }
@@ -436,7 +433,7 @@ _XND_value(const xnd_t * const xnd_p, const int64_t maxshape)
         break;
       }
 
-      const xnd_t next = xnd_fixed_dim_next(xnd_p, t);
+      const xnd_t next = xnd_fixed_dim_next(xnd_p, i);
       v = _XND_value(&next, maxshape);
       rb_ary_store(array, i, v);
     }
@@ -548,7 +545,7 @@ convert_key(xnd_index_t *indices, int *len, int argc, VALUE *argv)
       rb_raise(rb_eArgError, "too many indices %d.", argc);
     }
 
-    for (size_t i = 0; i < argc; i++) {
+    for (unsigned int i = 0; i < argc; i++) {
       x = argv[i];
       flags |= convert_single(indices+i, x);
       if (flags & KEY_ERROR) {
@@ -563,9 +560,6 @@ convert_key(xnd_index_t *indices, int *len, int argc, VALUE *argv)
   *len = 1;
   return convert_single(indices, argv[0]);
 }
-
-/* xnd_t xnd_subscript(xnd_t *x, xnd_index_t indices[], int len, */
-/*                             ndt_context_t *ctx); */
 
 /* Implement the #[] Ruby method. */
 static VALUE

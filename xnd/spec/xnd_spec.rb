@@ -60,7 +60,7 @@ describe XND do
     end
   end
 
-  context "#strict_equal" do
+  context "#strict_equal", focus: true do
     before do
       @x = XND.new [1,2,3,4]      
     end
@@ -72,9 +72,9 @@ describe XND do
     end
 
     it "tests different shape and/or data" do
-      expect_strict_unequal @x, XND.new([1,2,3])
+      expect_strict_unequal @x, XND.new([1,2,3,5])
       expect_strict_unequal @x, XND.new([1,2,3,100])
-      expect_strict_unequal @x, XND.new([1,2,3,4,5])
+      expect_strict_unequal @x, XND.new([4,2,3,4,5])
     end
 
     it "tests different shape" do
@@ -102,7 +102,7 @@ describe XND do
     end
   end
 
-  context "#to_a" do
+  context "#to_a", focus: true do
     it "returns simple array" do
       x = XND.new [1,2,3,4]
 
