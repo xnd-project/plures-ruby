@@ -68,6 +68,7 @@ static const rb_data_type_t ResourceBufferObject_type = {
   .flags = RUBY_TYPED_FREE_IMMEDIATELY,
 };
 
+/* FIXME: change this to rbuf_alloc to reflect that its not called by Ruby alloc. */
 static VALUE
 rbuf_allocate(void)
 {
@@ -458,6 +459,45 @@ rb_ndtypes_move_subtree(VALUE src, ndt_t *t)
   rb_ndtypes_gc_guard_register(dest_p, RBUF(dest_p));
 
   return dest;
+}
+
+/* Create NDT object from String. Returns the same object if type is NDT. 
+   
+   @param type String object containing description of type.
+   @return New NDT object.
+*/
+VALUE
+rb_ndtypes_from_object(VALUE type)
+{
+  NDT_STATIC_CONTEXT(ctx);
+  VALUE copy;
+  NdtObject *copy_p;
+  const char *cp;
+  
+  if (NDT_CHECK_TYPE(type)) {
+    return type;
+  }
+
+  Check_Type(type, T_STRING);
+
+  cp = StringValueStr(type);
+  if (cp == NULL) {
+    rb_raise(rb_eMemError,
+             "error is getting C string from type in rb_ndtypes_from_object.");
+  }
+
+  copy = NdtObject_alloc();
+  GET_NDT(copy, copy_p);
+
+  RBUF(copy_p) = rbuf_allocate();
+  NDT(copy_p) = ndt_from_string_fill_meta(RBUF_NDT_M(copy_p), cp, &ctx);
+  if (NDT(copy_p) == NULL) {
+    rb_raise(rb_eMemError,
+             "could not allocate NDT object from string in rb_ndtypes_from_object.");
+  }
+  rb_ndtypes_gc_guard_register(copy_p, RBUF(copy_p));
+
+  return copy;
 }
 
 void Init_ruby_ndtypes(void)

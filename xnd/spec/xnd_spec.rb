@@ -38,7 +38,33 @@ describe XND do
   context ".empty" do
     context "FixedDim" do
       it "creates FixedDim empty array" do
-        
+        DTYPE_EMPTY_TEST_CASES.each do |v, s|
+          [
+            [[v] * 0, "0 * #{s}" ],
+            [[v] * 1, "1 * #{s}" ],
+            [[v] * 2, "2 * #{s}" ],
+            [[v] * 1000, "1000 * #{s}" ],
+          
+            [[[v] * 0] * 0, "0 * 0 * #{s}" ],
+            [[[v] * 1] * 0, "0 * 1 * #{s}" ],
+            [[[v] * 0] * 1, "1 * 0 * #{s}" ],
+            
+            [[[v] * 1] * 1, "1 * 1 * #{s}" ],
+            [[[v] * 2] * 1, "1 * 2 * #{s}" ],
+            [[[v] * 1] * 2, "2 * 1 * #{s}" ],
+            [[[v] * 2] * 2, "2 * 2 * #{s}" ],
+            [[[v] * 3] * 2, "2 * 3 * #{s}" ],
+            [[[v] * 2] * 3, "3 * 2 * #{s}" ],
+            [[[v] * 40] *3 , "3 * 40 * #{s}" ]
+          ].each do |vv, ss|
+            t = NDT.new ss
+            x = XND.empty ss
+
+            expect(x.type).to eq(t)
+            expect(x.value).to eq(vv)
+            expect(x.size).to eq(vv.size)
+          end
+        end
       end      
     end
 
@@ -46,6 +72,12 @@ describe XND do
       it "creates VarDim empty" do
         
       end      
+    end
+
+    context "Fortran" do
+      it "creates Fortran empty" do
+        
+      end
     end
   end
 
@@ -162,8 +194,11 @@ describe XND do
   end
 
   context "#size" do
-    it "returns the size of the XND array" do
-      
+    context "FixedDim" do
+      it "returns the size of the XND array" do
+        x = XND.new [1,2,3,4,5]
+        expect(x.size).to eq(5)
+      end
     end
   end
 end

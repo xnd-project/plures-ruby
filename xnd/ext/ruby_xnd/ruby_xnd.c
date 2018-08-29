@@ -234,6 +234,16 @@ mblock_init(xnd_t * const x, VALUE data)
   }
 }
 
+/* Create empty mblock from ndt. 
+
+   @param ndt Ruby object of type NDT.
+*/
+static VALUE
+mblock_empty(VALUE ndt)
+{
+  
+}
+
 /* Create mblock from NDT type. 
  *
  * @param type - NDT Ruby object.
@@ -330,7 +340,7 @@ static const rb_data_type_t XndObject_type = {
 };
 
 static void
-RubyXND_from_mblock(XndObject *xnd_p, VALUE mblock)
+XND_from_mblock(XndObject *xnd_p, VALUE mblock)
 {
   MemoryBlockObject *mblock_p;
 
@@ -371,7 +381,7 @@ RubyXND_initialize(VALUE self, VALUE type, VALUE data)
   mblock = mblock_from_typed_value(type, data);
   GET_XND(self, xnd_p);
 
-  RubyXND_from_mblock(xnd_p, mblock);
+  XND_from_mblock(xnd_p, mblock);
   rb_xnd_gc_guard_register(xnd_p, mblock);
 
 #ifdef XND_DEBUG
@@ -657,6 +667,27 @@ XND_strict_equal(VALUE self, VALUE other)
   }
 }
 
+/*************************** Singleton methods ********************************/
+
+static VALUE
+XND_s_empty(VALUE klass, VALUE type)
+{
+  MemoryBlockObject *mblock_p;
+  XndObject *self_p;
+  VALUE self, mblock;
+
+  self = XndObject_alloc();
+  GET_XND(self, self_p);
+  
+  type = rb_ndtypes_from_object(type);
+  mblock = mblock_empty(type);
+
+  XND_from_mblock(self_p, mblock);
+  rb_xnd_gc_guard_register(self_p, mblock);
+
+  return self;
+}
+
 void Init_ruby_xnd(void)
 {
   /* init classes */
@@ -680,6 +711,9 @@ void Init_ruby_xnd(void)
   rb_define_method(cXND, "==", XND_eqeq, 1);
   rb_define_method(cXND, "<=>", XND_spaceship, 1);
   rb_define_method(cXND, "strict_equal", XND_strict_equal, 1);
+
+  /* singleton methods */
+  rb_define_singleton_method(cXND, "empty", XND_s_empty, 1);
   
   rb_xnd_init_gc_guard();
 }
