@@ -40,10 +40,11 @@
 VALUE cRubyXND;
 VALUE cXND;
 static VALUE cRubyXND_MBlock;
-static VALUE rb_eNotImplementedError;
 static VALUE cRubyXND_Ellipsis;
 static const rb_data_type_t MemoryBlockObject_type;
 static const rb_data_type_t XndObject_type;
+
+static VALUE rb_eValueError;
 
 VALUE mRubyXND_GCGuard;
 
@@ -174,9 +175,25 @@ get_int(VALUE data, int64_t min, int64_t max)
   return x;
 }
 
+static uint64_t
+get_uint(VALUE data, uint64_t max)
+{
+  VALUE temp;
+  unsigned long long x;
+
+  x = NUM2ULL(data);
+
+  if (x > max) {
+    rb_raise(rb_eArgError, "number out of range: %ulld", x);
+  }
+
+  return x;
+}
+
 static int
 mblock_init(xnd_t * const x, VALUE data)
 {
+  NDT_STATIC_CONTEXT(ctx);
   const ndt_t * const t = x->type;
 
   if (!check_invariants(t)) {
@@ -190,7 +207,7 @@ mblock_init(xnd_t * const x, VALUE data)
   /* set missing value. */
   if (ndt_is_optional(t)) {
     if (t->ndim > 0) {
-      rb_raise(rb_eNotImplementedError,
+      rb_raise(rb_eNotImpError,
                "optional dimensions are not implemented.");
     }
 
@@ -223,25 +240,184 @@ mblock_init(xnd_t * const x, VALUE data)
     }
     return 0;
   }
-  case Int64: {
-    int64_t tmp = get_int(data, INT64_MIN, INT64_MAX);
 
-    PACK_SINGLE(x->ptr, tmp, int64_t, t->flags);
+  case VarDim: {
+    int64_t start, step, shape;
+    int64_t i;
+
+    Check_Type(data, T_ARRAY);
+
+    shape = ndt_var_indices(&start, &step, t, x->index, &ctx);
+    if (shape < 0) {
+      /* set err wrt ctx. */
+    }
+
+    if (RARRAY_LEN(data) != shape) {
+      rb_raise(rb_eValueError, "expected Array with size %ld not %ld.",
+               RARRAY_LEN(data), shape);
+    }
+
+    for (i = 0; i < shape; i++) {
+      xnd_t next = xnd_var_dim_next(x, start, step, i);
+      VALUE rb_index[1] = { LL2NUM(i) };
+      
+      mblock_init(&next, rb_ary_aref(1, rb_index, data));
+    }
+
     return 0;
   }
-  default:                      /* TODO: remove after implemented all dtypes. */
-    rb_raise(rb_eNotImplementedError, "invalid type tag (%d).", t->tag);
+    
+  case Tuple: {
+    const int64_t shape = t->Tuple.shape;
+    int64_t i;
+
+    /* since ruby does not have immutable tuple-type, we use Array instead. */
+    Check_Type(data, T_ARRAY);
+
+    if (RARRAY_LEN(data) != shape) {
+      rb_raise(rb_eArgError,
+               "expected Array with size %ld, not %ld.",
+               shape, RARRAY_LEN(data));
+    }
+
+    for (i = 0; i < shape; i++) {
+      xnd_t next = xnd_tuple_next(x, i, &ctx);
+      if (next.ptr == NULL) {
+        /* raise error wrt ctx. */
+      }
+      VALUE rb_index[1] = { LL2NUM(i) };
+      
+      mblock_init(&next, rb_ary_aref(1, rb_index, data));
+    }
+
+    return 0;
   }
-}
 
-/* Create empty mblock from ndt. 
+  case Bool: {
+  }
+    
+  case Int8: {
+    int8_t temp = (int8_t)get_int(data, INT8_MIN, INT8_MAX);
 
-   @param ndt Ruby object of type NDT.
-*/
-static VALUE
-mblock_empty(VALUE ndt)
-{
-  
+    PACK_SINGLE(x->ptr, temp, int8_t, t->flags);
+    return 0;
+  }
+
+  case Int16: {
+    int16_t temp = (int16_t)get_int(data, INT16_MIN, INT16_MAX);
+
+    PACK_SINGLE(x->ptr, temp, int16_t, t->flags);
+    return 0;
+  }
+
+  case Int32: {
+    int32_t temp = (int32_t)get_int(data, INT32_MIN, INT32_MAX);
+    
+    PACK_SINGLE(x->ptr, temp, int32_t, t->flags);
+    return 0;
+  }
+
+  case Int64: {
+    int64_t temp = get_int(data, INT64_MIN, INT64_MAX);
+
+    PACK_SINGLE(x->ptr, temp, int64_t, t->flags);
+    return 0;
+  }
+    
+  case Uint8: {
+    uint8_t temp = (uint8_t)get_uint(data, UINT8_MAX);
+    PACK_SINGLE(x->ptr, temp, uint8_t, t->flags);
+    return 0;
+  }
+
+  case Uint16: {
+    uint16_t temp = (uint16_t)get_uint(data, UINT16_MAX);
+
+    PACK_SINGLE(x->ptr, temp, uint16_t, t->flags);
+    return 0;
+  }
+
+  case Uint32: {
+    uint32_t temp = (uint32_t)get_uint(data, UINT32_MAX);
+    
+    PACK_SINGLE(x->ptr, temp, uint32_t, t->flags);
+    return 0;
+  }
+
+  case Uint64: {
+    uint64_t temp = get_uint(data, UINT64_MAX);
+
+    PACK_SINGLE(x->ptr, temp, uint64_t, t->flags);
+    return 0;
+  }
+
+  case Float16: {
+    /* TODO: implement float unpacking functions. */
+  }
+
+  case Float32: {
+  }
+
+  case Float64: {
+  }
+
+  case Complex32: {
+  }
+
+  case Complex64: {
+  }
+
+  case Complex128: {
+  }
+
+  case FixedString: {
+    switch (t->FixedString.encoding) {
+    case Ascii: {
+    }
+      
+    case Utf8: {
+    }
+
+    case Utf16: {
+    }
+
+    case Utf32: {
+    }
+
+    case Ucs2: {
+    }
+
+    default: {
+      rb_raise(rb_eRuntimeError, "invaling string encoding.");
+    }  
+    }
+  }
+
+  case FixedBytes: {
+  }
+
+  case String: {
+  }
+
+  case Bytes: {
+  }
+
+  case Categorical: {
+  }
+
+  case Char: {
+  }
+
+  case Module: {
+  }
+
+    /* NOT REACHED: intercepted by ndt_is_abstract(). */
+  case AnyKind: case SymbolicDim: case EllipsisDim: case Typevar:
+  case ScalarKind: case SignedKind: case UnsignedKind: case FloatKind:
+  case ComplexKind: case FixedStringKind: case FixedBytesKind:
+  case Function:
+    rb_raise(rb_eArgError, "unexpected abstract type.");
+  }
 }
 
 /* Create mblock from NDT type. 
@@ -407,13 +583,14 @@ XND_type(VALUE self)
 }
 
 static VALUE
-_XND_value(const xnd_t * const xnd_p, const int64_t maxshape)
+_XND_value(const xnd_t * const x, const int64_t maxshape)
 {
-  const ndt_t * const t = xnd_p->type;
+  NDT_STATIC_CONTEXT(ctx);
+  const ndt_t * const t = x->type;
 
 #ifdef XND_DEBUG
   assert(t);
-  assert(xnd_p);
+  assert(x);
 #endif
 
   if (!ndt_is_concrete(t)) {
@@ -421,7 +598,7 @@ _XND_value(const xnd_t * const xnd_p, const int64_t maxshape)
   }
 
   /* bitmap access needs linear index. */
-  if (xnd_is_na(xnd_p)) {
+  if (xnd_is_na(x)) {
     return Qnil;
   }
 
@@ -443,7 +620,33 @@ _XND_value(const xnd_t * const xnd_p, const int64_t maxshape)
         break;
       }
 
-      const xnd_t next = xnd_fixed_dim_next(xnd_p, i);
+      const xnd_t next = xnd_fixed_dim_next(x, i);
+      v = _XND_value(&next, maxshape);
+      rb_ary_store(array, i, v);
+    }
+
+    return array;
+  }
+
+  case VarDim: {
+    VALUE array, v;
+    int64_t start, step, shape;
+    int64_t i;
+
+    shape = ndt_var_indices(&start, &step, t, x->index, &ctx);
+    if (shape < 0) {
+      /* error w.r.t ctx */
+    }
+
+    array = array_new(shape);
+
+    for (i = 0; i < shape; i++) {
+      if (i == maxshape-1) {
+        rb_ary_store(array, i, xnd_ellipsis());
+        break;
+      }
+
+      xnd_t next = xnd_var_dim_next(x, start, step, i);
       v = _XND_value(&next, maxshape);
       rb_ary_store(array, i, v);
     }
@@ -451,16 +654,172 @@ _XND_value(const xnd_t * const xnd_p, const int64_t maxshape)
     return array;
   }
     
+  case Tuple: {
+    VALUE tuple, v;
+    int64_t shape, i;
+
+    shape = t->Tuple.shape;
+    if (shape > maxshape) {
+      shape = maxshape;
+    }
+
+    tuple = array_new(shape);
+
+    for (i = 0; i < shape; i++) {
+      if (i == maxshape) {
+        rb_ary_store(tuple, i, xnd_ellipsis());
+        break;
+      }
+
+      const xnd_t next = xnd_tuple_next(x, i, &ctx);
+      if (next.ptr == NULL) {
+        /* TODO: raise error wrt ctx. */
+      }
+
+      v = _XND_value(&next, maxshape);
+      if (v == NULL) {
+        rb_raise(rb_eValueError, "could not get tuple value in _XND_value.");
+      }
+      
+      rb_ary_store(tuple, i, v);
+    }
+
+    return tuple;
+  }
+
+  case Ref: {
+    xnd_t next = xnd_ref_next(x, &ctx);
+    if (next.ptr == NULL) {
+      /* error wr.t ctx. */
+    }
+
+    return _XND_value(&next, maxshape);
+  }
+
+  case Bool: {
+    int temp;
+    UNPACK_SINGLE(temp, x->ptr, bool, t->flags);
+    return NUM2BOOL(temp);
+  }
+
+  case Int8: {
+    int8_t temp;
+    UNPACK_SINGLE(temp, x->ptr, int8_t, t->flags);
+    return INT2NUM(temp);
+  }
+
+  case Int16: {
+    int16_t temp;
+    UNPACK_SINGLE(temp, x->ptr, int16_t, t->flags);
+    return INT2NUM(temp);
+  }
+    
+  case Int32: {
+    int32_t temp;
+    UNPACK_SINGLE(temp, x->ptr, int32_t, t->flags);
+    return INT2NUM(temp);
+  }
+    
   case Int64: {
     int64_t temp;
-    UNPACK_SINGLE(temp, xnd_p->ptr, int64_t, t->flags);
+    UNPACK_SINGLE(temp, x->ptr, int64_t, t->flags);
     return LL2NUM(temp);
   }
 
-  default: {
-    rb_raise(rb_eArgError, "cannot convert this type to Array.");
+  case Uint8: {
+    uint8_t temp;
+    UNPACK_SINGLE(temp, x->ptr, uint8_t, t->flags);
+    return UINT2NUM(temp);
   }
+
+  case Uint16: {
+    uint16_t temp;
+    UNPACK_SINGLE(temp, x->ptr, uint16_t, t->flags);
+    return UINT2NUM(temp);
   }
+
+  case Uint32: {
+    uint32_t temp;
+    UNPACK_SINGLE(temp, x->ptr, uint32_t, t->flags);
+    return ULL2NUM(temp);
+  }
+
+  case Uint64: {
+    uint64_t temp;
+    UNPACK_SINGLE(temp, x->ptr, uint64_t, t->flags);
+    return ULL2NUM(temp);
+  }
+
+  case Float16: {
+    /* TODO: implement float packing functions. */
+  }
+
+  case Float32: {
+  }
+
+  case Float64: {
+  }
+
+  case Complex32: {
+  }
+
+  case Complex64: {
+  }
+
+  case Complex128: {
+  }
+
+  case FixedString: {
+    switch (t->FixedString.encoding) {
+    case Ascii: {
+    }
+      
+    case Utf8: {
+    }
+
+    case Utf16: {
+    }
+
+    case Utf32: {
+    }
+
+    case Ucs2: {
+    }
+
+    default: {
+      rb_raise(rb_eRuntimeError, "invaling string encoding.");
+    }
+      
+    }
+  }
+
+  case FixedBytes: {
+  }
+
+  case String: {
+  }
+
+  case Bytes: {
+  }
+
+  case Categorical: {
+  }
+
+  case Char: {
+  }
+
+  case Module: {
+  }
+
+    /* NOT REACHED: intercepted by ndt_is_abstract(). */
+  case AnyKind: case SymbolicDim: case EllipsisDim: case Typevar:
+  case ScalarKind: case SignedKind: case UnsignedKind: case FloatKind:
+  case ComplexKind: case FixedStringKind: case FixedBytesKind:
+  case Function:
+    rb_raise(rb_eArgError, "unexpected abstract type.");
+  }
+
+  rb_raise(rb_eRuntimeError, "invalid type tag.");
 }
 
 /* Return the value of this xnd object. Aliased to to_a. */
@@ -667,12 +1026,46 @@ XND_strict_equal(VALUE self, VALUE other)
   }
 }
 
+/* Implement XND#size. */
+static VALUE
+XND_size(VALUE self)
+{
+  NDT_STATIC_CONTEXT(ctx);
+  XndObject *self_p;
+  xnd_t *x;
+    
+  GET_XND(self, self_p);
+  x = XND(self_p);
+  const ndt_t *t = x->type;
+
+  if (!ndt_is_concrete(t)) {
+    rb_raise(rb_eTypeError, "NDT must be concrete to get size.");
+  }
+
+  if (t->ndim > 0 && ndt_is_optional(t)) {
+    rb_raise(rb_eNotImpError, "optional dimensions are not supported.");
+  }
+
+  if (xnd_is_na(x)) {
+    return INT2NUM(0);
+  }
+
+  switch (t->tag) {
+  case FixedDim: {
+    return LL2NUM(safe_downcast(t->FixedDim.shape));
+  }
+
+  default: {
+    rb_raise(rb_eTypeError, "type has no size.");
+  }
+  }
+}
+
 /*************************** Singleton methods ********************************/
 
 static VALUE
 XND_s_empty(VALUE klass, VALUE type)
 {
-  MemoryBlockObject *mblock_p;
   XndObject *self_p;
   VALUE self, mblock;
 
@@ -697,8 +1090,8 @@ void Init_ruby_xnd(void)
   cRubyXND_Ellipsis = rb_define_class_under(cRubyXND, "Ellipsis", rb_cObject);
   mRubyXND_GCGuard = rb_define_module_under(cRubyXND, "GCGuard");
 
-  /* init errors */
-  rb_eNotImplementedError = rb_define_class("NotImplementedError", rb_eScriptError);
+  /* errors */
+  rb_eValueError = rb_define_class("ValueError", rb_eRuntimeError);
   
   /* initializers */
   rb_define_alloc_func(cRubyXND, RubyXND_allocate);
@@ -711,6 +1104,7 @@ void Init_ruby_xnd(void)
   rb_define_method(cXND, "==", XND_eqeq, 1);
   rb_define_method(cXND, "<=>", XND_spaceship, 1);
   rb_define_method(cXND, "strict_equal", XND_strict_equal, 1);
+  rb_define_method(cXND, "size", XND_size, 0);
 
   /* singleton methods */
   rb_define_singleton_method(cXND, "empty", XND_s_empty, 1);

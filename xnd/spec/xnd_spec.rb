@@ -37,29 +37,29 @@ describe XND do
 
   context ".empty" do
     context "FixedDim" do
-      it "creates FixedDim empty array" do
-        DTYPE_EMPTY_TEST_CASES.each do |v, s|
-          [
-            [[v] * 0, "0 * #{s}" ],
-            [[v] * 1, "1 * #{s}" ],
-            [[v] * 2, "2 * #{s}" ],
-            [[v] * 1000, "1000 * #{s}" ],
+      DTYPE_EMPTY_TEST_CASES.each do |v, s|
+        [
+          [[v] * 0, "0 * #{s}" ],
+          [[v] * 1, "1 * #{s}" ],
+          [[v] * 2, "2 * #{s}" ],
+          [[v] * 1000, "1000 * #{s}" ],
           
-            [[[v] * 0] * 0, "0 * 0 * #{s}" ],
-            [[[v] * 1] * 0, "0 * 1 * #{s}" ],
-            [[[v] * 0] * 1, "1 * 0 * #{s}" ],
-            
-            [[[v] * 1] * 1, "1 * 1 * #{s}" ],
-            [[[v] * 2] * 1, "1 * 2 * #{s}" ],
-            [[[v] * 1] * 2, "2 * 1 * #{s}" ],
-            [[[v] * 2] * 2, "2 * 2 * #{s}" ],
-            [[[v] * 3] * 2, "2 * 3 * #{s}" ],
-            [[[v] * 2] * 3, "3 * 2 * #{s}" ],
-            [[[v] * 40] *3 , "3 * 40 * #{s}" ]
-          ].each do |vv, ss|
-            t = NDT.new ss
-            x = XND.empty ss
+          [[[v] * 0] * 0, "0 * 0 * #{s}" ],
+          [[[v] * 1] * 0, "0 * 1 * #{s}" ],
+          [[[v] * 0] * 1, "1 * 0 * #{s}" ],
+          
+          [[[v] * 1] * 1, "1 * 1 * #{s}" ],
+          [[[v] * 2] * 1, "1 * 2 * #{s}" ],
+          [[[v] * 1] * 2, "2 * 1 * #{s}" ],
+          [[[v] * 2] * 2, "2 * 2 * #{s}" ],
+          [[[v] * 3] * 2, "2 * 3 * #{s}" ],
+          [[[v] * 2] * 3, "3 * 2 * #{s}" ],
+          [[[v] * 40] *3 , "3 * 40 * #{s}" ]
+        ].each do |vv, ss|
+          t = NDT.new ss
+          x = XND.empty ss
 
+          it "type: #{ss}" do
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
             expect(x.size).to eq(vv.size)
@@ -68,10 +68,32 @@ describe XND do
       end      
     end
 
-    context "VarDim" do
-      it "creates VarDim empty" do
-        
-      end      
+    context "VarDim", focus: true do
+      DTYPE_EMPTY_TEST_CASES[0..1].each do |v, s|
+        [
+          [[v] * 0, "var(offsets=[0,0]) * #{s}"],
+          [[v] * 1, "var(offsets=[0,1]) * #{s}"],
+          [[v] * 2, "var(offsets=[0,2]) * #{s}"],
+          [[v] * 1000, "var(offsets=[0,1000]) * #{s}"],
+          
+          [[[v] * 0] * 1, "var(offsets=[0,1]) * var(offsets=[0,0]) * #{s}"],
+          
+          [[[v], []], "var(offsets=[0,2]) * var(offsets=[0,1,1]) * #{s}"],
+          [[[], [v]], "var(offsets=[0,2]) * var(offsets=[0,0,1]) * #{s}"],
+          
+          [[[v], [v]], "var(offsets=[0,2]) * var(offsets=[0,1,2]) * #{s}"],
+          [[[v], [v] * 2, [v] * 5], "var(offsets=[0,3]) * var(offsets=[0,1,3,8]) * #{s}"]
+        ].each do |vv, ss|
+          t = NDT.new ss
+          x = XND.empty ss
+
+          it "type: #{ss}" do
+            expect(x.type).to eq(t)
+            expect(x.value).to eq(vv)
+            expect(x.size).to eq(vv.size)
+          end
+        end
+      end
     end
 
     context "Fortran" do
@@ -115,6 +137,14 @@ describe XND do
     end
   end
 
+  context "#[]=" do
+    context "FixedDim" do
+      before do
+        
+      end
+    end
+  end
+  
   context "#strict_equal" do
     context "FixedDim" do
       before do

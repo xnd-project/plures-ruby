@@ -480,9 +480,9 @@ rb_ndtypes_from_object(VALUE type)
 
   Check_Type(type, T_STRING);
 
-  cp = StringValueStr(type);
+  cp = StringValuePtr(type);
   if (cp == NULL) {
-    rb_raise(rb_eMemError,
+    rb_raise(rb_eNoMemError,
              "error is getting C string from type in rb_ndtypes_from_object.");
   }
 
@@ -490,9 +490,11 @@ rb_ndtypes_from_object(VALUE type)
   GET_NDT(copy, copy_p);
 
   RBUF(copy_p) = rbuf_allocate();
-  NDT(copy_p) = ndt_from_string_fill_meta(RBUF_NDT_M(copy_p), cp, &ctx);
+  NDT(copy_p) = ndt_from_string_fill_meta(
+                                          rbuf_ndt_meta(copy),
+                                          cp, &ctx);
   if (NDT(copy_p) == NULL) {
-    rb_raise(rb_eMemError,
+    rb_raise(rb_eNoMemError,
              "could not allocate NDT object from string in rb_ndtypes_from_object.");
   }
   rb_ndtypes_gc_guard_register(copy_p, RBUF(copy_p));
