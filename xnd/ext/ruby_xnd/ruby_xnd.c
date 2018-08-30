@@ -766,11 +766,61 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
 
     return tuple;
   }
+    
+  case Record: {
+    VALUE hash, v;
+    int64_t shape, i;
+
+    shape = t->Record.shape;
+    if (shape > maxshape) {
+      shape = maxshape;
+    }
+
+    hash = rb_hash_new();
+
+    for (i = 0; i < shape; ++i) {
+      if (i == maxshape - i) {
+        rb_hash_aset(hash, xnd_ellipsis(), xnd_ellipsis());
+      }
+
+      xnd_t next = xnd_record_next(x, i, &ctx);
+      if (next.ptr == NULL) {
+        /* error wrt ctx */
+      }
+
+      v = _XND_value(&next, maxshape);
+      rb_hash_aset(hash, rb_str_new2(t->Record.names[i]), v);
+    }
+
+    return 0;
+  }
 
   case Ref: {
     xnd_t next = xnd_ref_next(x, &ctx);
     if (next.ptr == NULL) {
       /* error wr.t ctx. */
+    }
+
+    return _XND_value(&next, maxshape);
+  }
+
+  case Constr: {
+    xnd_t next = xnd_constr_next(x, &ctx);
+    if (next.ptr == NULL) {
+      
+    }
+
+    return _XND_value(&next, maxshape);
+  }
+
+  case Nominal: {
+    xnd_t next = xnd_nominal_next(x, &ctx);
+    if (next.ptr == NULL) {
+      
+    }
+
+    if (t->Nominal.meth->repr != NULL) {
+      return t->Nominal.meth->repr(&next, &ctx);
     }
 
     return _XND_value(&next, maxshape);
@@ -899,7 +949,7 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
     rb_raise(rb_eArgError, "unexpected abstract type.");
   }
 
-  rb_raise(rb_eRuntimeError, "invalid type tag.");
+  rb_raise(rb_eRuntimeError, "invalid type tag %d.", t->tag);
 }
 
 /* Return the value of this xnd object. Aliased to to_a. */
@@ -1106,16 +1156,10 @@ XND_strict_equal(VALUE self, VALUE other)
   }
 }
 
-/* Implement XND#size. */
-static VALUE
-XND_size(VALUE self)
+static size_t
+_XND_size(const xnd_t *x)
 {
   NDT_STATIC_CONTEXT(ctx);
-  XndObject *self_p;
-  xnd_t *x;
-    
-  GET_XND(self, self_p);
-  x = XND(self_p);
   const ndt_t *t = x->type;
 
   if (!ndt_is_concrete(t)) {
@@ -1127,18 +1171,65 @@ XND_size(VALUE self)
   }
 
   if (xnd_is_na(x)) {
-    return INT2NUM(0);
+    return 0;
   }
 
   switch (t->tag) {
   case FixedDim: {
-    return LL2NUM(safe_downcast(t->FixedDim.shape));
+    return safe_downcast(t->FixedDim.shape);
+  }
+
+  case VarDim: {
+    int64_t start, step, shape;
+
+    shape = ndt_var_indices(&start, &step, t, x->index, &ctx);
+    if (shape < 0) {
+      /* error. */
+    }
+
+    return safe_downcast(shape);
+  }
+
+  case Tuple: {
+    return safe_downcast(t->Tuple.shape);
+  }
+
+  case Record: {
+    return safe_downcast(t->Record.shape);
+  }
+
+  case Ref: {
+    const xnd_t next = xnd_ref_next(x, &ctx);
+    if (next.ptr == NULL) {
+      /* error */
+    }
+
+    return _XND_size(&next);
+  }
+
+  case Constr: {
+    const xnd_t next = xnd_constr_next(x, &ctx);
+    if (next.ptr == NULL) {
+      /* error */
+    }
+
+    return _XND_size(&next);
   }
 
   default: {
     rb_raise(rb_eTypeError, "type has no size.");
   }
-  }
+  }  
+}
+
+/* Implement XND#size. */
+static VALUE
+XND_size(VALUE self)
+{
+  XndObject *self_p;
+    
+  GET_XND(self, self_p);
+  return ULL2NUM(_XND_size(XND(self_p)));
 }
 
 /*************************** Singleton methods ********************************/
