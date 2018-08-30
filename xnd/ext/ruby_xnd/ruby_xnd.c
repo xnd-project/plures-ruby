@@ -293,7 +293,85 @@ mblock_init(xnd_t * const x, VALUE data)
     return 0;
   }
 
+  case Record: {
+    const int64_t shape = t->Record.shape;
+    VALUE temp;
+    int64_t i;
+    int ret;
+
+    Check_Type(data, T_HASH);
+
+    if (rb_xnd_hash_size(data) != shape) {
+      rb_raise(rb_eArgError, "expected Hash size does not match with shape size.");
+    }
+
+    for (i = 0; i < shape; i++) {
+      xnd_t next = xnd_record_next(x, i, &ctx);
+      if (next.ptr == NULL) {
+        /* error by ctx */
+      }
+
+      temp = rb_hash_aref(data, rb_str_new2(t->Record.names[i]));
+      mblock(&next, temp);
+    }
+
+    return 0;
+  }
+
+  case Ref: {
+    xnd_t next = xnd_ref_next(x, &ctx);
+    if (next.ptr == NULL) {
+      /* ctx error */
+    }
+
+    return mblock_init(&next, data);
+  }
+
+  case Constr: {
+    xnd_t next = xnd_constr_next(x, &ctx);
+    if (next.ptr == NULL) {
+      
+    }
+
+    return mblock_init(&next, data);
+  }
+
+  case Nominal: {
+    xnd_t next = xnd_nominal_next(x, &ctx);
+    if (next.ptr == NULL) {
+      /* TODO: error w.r.t ctx. */
+    }
+
+    if (t->Nominal.meth->init != NULL) {
+      if (!t->Nominal.meth->init(&next, x, &ctx)) {
+        rb_raise(rb_eTypeError, "could not init Nominal type in mblock_init.");
+      }
+      return 0;
+    }
+
+    mblock_init(&next, data);
+
+    if (t->Nominal.meth->constraint != NULL &&
+        !t->Nominal.meth->constraint(&next, &ctx)) {
+      /* error by ctx. */
+    }
+
+    return 0;
+  }
+
   case Bool: {
+    int temp;
+    bool b;
+
+    if (data == Qnil) {
+      rb_raise(rb_eTypeError, "assigning nil to memory block with non-optional type.");
+    }
+
+    temp = RTEST(data);
+    b = (bool)temp;
+
+    PACK_SINGLE(x->ptr, b, bool, t->flags);
+    return 0;
   }
     
   case Int8: {
@@ -406,9 +484,11 @@ mblock_init(xnd_t * const x, VALUE data)
   }
 
   case Char: {
+    rb_raise(rb_eNotImpError, "'Char' type semantics need to be defined.");
   }
 
   case Module: {
+    rb_raise(rb_eNotImpError, "'Module' type not implemented.");
   }
 
     /* NOT REACHED: intercepted by ndt_is_abstract(). */
@@ -1079,6 +1159,16 @@ XND_s_empty(VALUE klass, VALUE type)
   rb_xnd_gc_guard_register(self_p, mblock);
 
   return self;
+}
+
+/*************************** C-API ********************************/
+
+size_t
+rb_xnd_hash_size(VALUE hash)
+{
+  Check_Type(hash, T_HASH);
+
+  return NUM2ULL(rb_funcall(hash, rb_intern("size"), 0, NULL));
 }
 
 void Init_ruby_xnd(void)

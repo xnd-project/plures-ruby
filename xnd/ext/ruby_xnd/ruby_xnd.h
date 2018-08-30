@@ -44,6 +44,8 @@ extern "C" {
 #include "ndtypes.h"
 #include "xnd.h"
 
+  size_t rb_xnd_hash_size(VALUE hash);
+
 #ifdef __cplusplus
 }
 #endif
