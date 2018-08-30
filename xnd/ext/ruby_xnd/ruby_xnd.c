@@ -162,6 +162,50 @@ mblock_empty(VALUE type)
   return WRAP_MBLOCK(cRubyXND_MBlock, mblock_p);
 }
 
+static void
+_strncpy(char *dest, const void *src, size_t len, size_t size)
+{
+    assert (len <= size);
+    memcpy(dest, src, len);
+    memset(dest+len, '\0', size-len);
+}
+
+static int64_t
+u8_skip_trailing_zero(const uint8_t *ptr, int64_t codepoints)
+{
+    int64_t i;
+
+    for (i=codepoints-1; i >= 0; i--)
+        if (ptr[i] != 0)
+            return i+1;
+
+    return 0;
+}
+
+static int64_t
+u16_skip_trailing_zero(const uint16_t *ptr, int64_t codepoints)
+{
+    int64_t i;
+
+    for (i=codepoints-1; i >= 0; i--)
+        if (ptr[i] != 0)
+            return i+1;
+
+    return 0;
+}
+
+static int64_t
+u32_skip_trailing_zero(const uint32_t *ptr, int64_t codepoints)
+{
+    int64_t i;
+
+    for (i=codepoints-1; i >= 0; i--)
+        if (ptr[i] != 0)
+            return i+1;
+
+    return 0;
+}
+
 static int64_t
 get_int(VALUE data, int64_t min, int64_t max)
 {
@@ -178,7 +222,6 @@ get_int(VALUE data, int64_t min, int64_t max)
 static uint64_t
 get_uint(VALUE data, uint64_t max)
 {
-  VALUE temp;
   unsigned long long x;
 
   x = NUM2ULL(data);
@@ -297,7 +340,6 @@ mblock_init(xnd_t * const x, VALUE data)
     const int64_t shape = t->Record.shape;
     VALUE temp;
     int64_t i;
-    int ret;
 
     Check_Type(data, T_HASH);
 
@@ -312,7 +354,7 @@ mblock_init(xnd_t * const x, VALUE data)
       }
 
       temp = rb_hash_aref(data, rb_str_new2(t->Record.names[i]));
-      mblock(&next, temp);
+      mblock_init(&next, temp);
     }
 
     return 0;
@@ -449,32 +491,80 @@ mblock_init(xnd_t * const x, VALUE data)
   }
 
   case FixedString: {
+    int64_t codepoints = t->FixedString.size;
+    int64_t len;
+
+    /* FIXME: check for unicode string. */
+    
     switch (t->FixedString.encoding) {
     case Ascii: {
+      /* FIXME: check for ASCII string. */
+
+      len = RSTRING_LEN(data);
+      if (len > t->datasize) {
+        rb_raise(rb_eValueError,
+                 "maxmimum string size in bytes is %" PRIi64, codepoints);
+      }
+
+      _strncpy(x->ptr, StringValueCStr(data), (size_t)len, (size_t)t->datasize);
+      return 0;
     }
       
     case Utf8: {
+      /* FIXME: check for utf-8 string. */
+      len = RSTRING_LEN(data);
+      if (len > t->datasize) {
+        rb_raise(rb_eValueError,
+                 "maximum string size (in UTF-8 code points) is %" PRIi64, codepoints);
+      }
+
+      _strncpy(x->ptr, StringValueCStr(data), (size_t)len, (size_t)t->datasize);
+      return 0;
     }
 
     case Utf16: {
+      /* FIXME: create UTF-16 string from C API. */
     }
 
     case Utf32: {
+      /* FIXME: create UTF-32 string from C API. */
     }
 
     case Ucs2: {
+      rb_raise(rb_eNotImpError, "UCS2 encoding not implemented.");
     }
 
     default: {
       rb_raise(rb_eRuntimeError, "invaling string encoding.");
-    }  
+    }
     }
   }
 
   case FixedBytes: {
+    int64_t size = t->FixedBytes.size;
+    int64_t len;
+
+    /* FIXME: check for bytes object. */
   }
 
   case String: {
+    size_t size;
+    const char *cp;
+    char *s;
+
+    cp = StringValueCStr(data);
+    size = RSTRING_LEN(data);
+    s = ndt_strdup(cp, &ctx);
+    if (s == NULL) {
+      /* use seterr_intx */
+    }
+
+    if (XND_POINTER_DATA(x->ptr)) {
+      ndt_free(XND_POINTER_DATA(x->ptr));
+    }
+
+    XND_POINTER_DATA(x->ptr) = s;
+    return 0;
   }
 
   case Bytes: {

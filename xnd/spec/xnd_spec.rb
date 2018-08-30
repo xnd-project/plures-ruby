@@ -78,10 +78,10 @@ describe XND do
           [[[v] * 2] * 3, "3 * 2 * #{s}" ],
           [[[v] * 40] *3 , "3 * 40 * #{s}" ]
         ].each do |vv, ss|
-          t = NDT.new ss
-          x = XND.empty ss
-
           it "type: #{ss}" do
+            t = NDT.new ss
+            x = XND.empty ss
+
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
             expect(x.size).to eq(vv.size)
@@ -106,10 +106,10 @@ describe XND do
           [[[v], [v]], "var(offsets=[0,2]) * var(offsets=[0,1,2]) * #{s}"],
           [[[v], [v] * 2, [v] * 5], "var(offsets=[0,3]) * var(offsets=[0,1,3,8]) * #{s}"]
         ].each do |vv, ss|
-          t = NDT.new ss
-          x = XND.empty ss
-
           it "type: #{ss}" do
+            t = NDT.new ss
+            x = XND.empty ss
+            
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
             expect(x.size).to eq(vv.size)
@@ -118,7 +118,7 @@ describe XND do
       end
     end
 
-    skip "Fortran" do
+    context "Fortran" do
       DTYPE_EMPTY_TEST_CASES.each do |v, s|
         [
           [[v] * 0, "!0 * #{s}"],
@@ -138,10 +138,10 @@ describe XND do
           [[[v] * 2] * 3, "!3 * 2 * #{s}"],
           [[[v] * 40] * 3, "!3 * 40 * #{s}"]
         ].each do |vv, ss|
-          t = NDT.new ss
-          x = XND.empty ss
-
           it "type: #{ss}" do
+            t = NDT.new ss
+            x = XND.empty ss
+            
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
             expect(x.size).to eq(vv.size)
@@ -150,7 +150,7 @@ describe XND do
       end
     end
 
-    context "SymbolicDim" do
+    skip "SymbolicDim" do
       DTYPE_EMPTY_TEST_CASES.each do |_, s|
         [
           [ValueError, "N * #{s}"],
@@ -158,9 +158,9 @@ describe XND do
           [ValueError, "N * 10 * N * #{s}"],
           [ValueError, "X * 10 * N * #{s}"]
         ].each do |err, ss|
-          t = NDT.new ss
-
           it "raises error for type: #{ss}" do
+            t = NDT.new ss
+            
             expect {
               XND.empty t
             }.to raise_error(err)            
@@ -169,7 +169,7 @@ describe XND do
       end
     end
 
-    context "EllipsisDim" do
+    skip "EllipsisDim" do
       DTYPE_EMPTY_TEST_CASES.each do |_, s|
         [
           [ValueError, "... * #{s}"],
@@ -179,8 +179,9 @@ describe XND do
           [ValueError, "A... * 10 * Some(ref(#{s}))"],
           [ValueError, "B... * 2 * 3 * Some(ref(ref(#{s})))"]
         ].each do |err, ss|
-          t = NDT.new ss
           it "raises error for type: #{ss}" do
+            t = NDT.new ss
+            
             expect {
               XND.empty ss
             }.to raise_error(err) 
@@ -203,10 +204,10 @@ describe XND do
           [[[v] * 3], "(3 * #{s})"],
           [[[[v] * 3]], "((3 * #{s}))"]
         ].each do |vv, ss|
-          t = NDT.new ss
-          x = XND.new ss
-
           it "type: #{ss}" do
+            t = NDT.new ss
+            x = XND.new ss
+          
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
             expect(x.size).to eq(vv.size)       
@@ -226,10 +227,10 @@ describe XND do
           [{'x' => [v] * 1}, "{x: 1 * #{s}}"],
           [{'x' => [v] * 3}, "{x: 3 * #{s}}"]
         ].each do |vv, ss|
-          t = NDT.new ss
-          x = XND.new ss
-
           it "type: #{ss}" do
+            t = NDT.new ss
+            x = XND.new ss
+                      
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
             expect(x.size).to eq(vv.size)       
@@ -255,10 +256,10 @@ describe XND do
           [[v] * 3, "ref(ref(3 * #{s}))"],
           [[v] * 3, "ref(ref(ref(3 * #{s})))"]
         ].each do |vv, ss|
-          t = NDT.new ss
-          x = XND.new ss
-
           it "type: #{ss}" do
+            t = NDT.new ss
+            x = XND.new ss
+            
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
             expect_with_exception :size, x, vv
@@ -277,10 +278,10 @@ describe XND do
           [[v] * 1, "Some(1 * #{s})"],
           [[v] * 3, "Maybe(3 * #{s})"]
         ].each do |vv, ss|
-          t = NDT.new ss
-          x = XND.new ss
-
           it "type: #{ss}" do
+            t = NDT.new ss
+            x = XND.new ss
+            
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
             expect_with_exception :size, x, vv
@@ -299,11 +300,10 @@ describe XND do
           [v, "some#{c}"],
           [v, "just#{c}"]
         ].each do |vv, ss|
-
-          t = NDT.new ss
-          x = XND.new ss
-
           it "type: #{ss}" do
+            t = NDT.new ss
+            x = XND.new ss
+            
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
             expect_with_exception :size, x, vv
@@ -341,7 +341,7 @@ describe XND do
       end
     end
 
-    context "FixedString" do
+    skip "FixedString" do
       it "tests kind of string" do
         expect {
           XND.empty "FixedString"
@@ -412,7 +412,7 @@ describe XND do
       # TODO: figure this out.
     end
 
-    context "Char" do
+    skip "Char" do
       it "raises NotImplementedError" do
         expect {
           XND.empty "char('utf8')"
@@ -420,7 +420,7 @@ describe XND do
       end
     end
 
-    context "SignedKind" do
+    skip "SignedKind" do
       it "raises ValueError" do
         expect {
           XND.empty "Signed"
@@ -428,7 +428,7 @@ describe XND do
       end
     end
 
-    context "UnsignedKind" do
+    skip "UnsignedKind" do
       it "raises ValueError" do
         expect {
           XND.empty "Unsigned"
@@ -436,7 +436,7 @@ describe XND do
       end
     end
 
-    context "FloatKind" do
+    skip "FloatKind" do
       it "raises ValueError" do
         expect {
           XND.empty "Float"
@@ -444,7 +444,7 @@ describe XND do
       end
     end
 
-    context "ComplexKind" do
+    skip "ComplexKind" do
       it "raises ValueError" do
         expect {
           XND.empty "Complex"
@@ -455,7 +455,7 @@ describe XND do
     context "Primitive" do
       EMPTY_TEST_CASES.each do |value, type_string|
         PRIMITIVE.each do |p|
-          ts = type_string + p
+          ts = type_string % p
 
           it "type: #{ts}" do
             x = XND.empty ts
@@ -467,7 +467,7 @@ describe XND do
       end
     end
 
-    context "TypeVar" do
+    skip "TypeVar" do
       [
         "T",
         "2 * 10 * T",
