@@ -1426,4 +1426,11 @@ void Init_ruby_xnd(void)
   rb_define_singleton_method(cXND, "empty", XND_s_empty, 1);
   
   rb_xnd_init_gc_guard();
+
+#ifdef XND_DEBUG
+  test_pack_float32();
+  test_unpack_float32();
+  test_pack_float64();
+  test_unpack_float64();
+#endif
 }

@@ -1,25 +1,6 @@
 require 'xnd'
 require 'pry'
 
-class Logger
-  def initialize(io,fn)
-    @io=io
-    @fn=fn
-  end
-  def <<(str) write(str) end
-  def print(str) write(str) end
-  def puts(str) write("#{str}\n") end
-  def putc(c) write( (c.is_a? Numeric) ? c.chr.to_s : c[0,1]) end
-  def write(str)
-    @io.print(str)
-    File.open(@fn,"a+") { |f| f.write(str) }
-  end
-end
-
-# test...
-
-$stdout=Logger.new($stdout,"trace.log")
-
 def expect_strict_equal x1, x2
   expect(x1.strict_equal(x2)).to eq(true)
   expect(x1).to eq(x2)

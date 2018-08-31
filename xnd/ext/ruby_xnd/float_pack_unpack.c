@@ -33,3 +33,40 @@
 
    Author: Sameer Deshmukh (@v0dro)
 */
+
+/* Pack a 32-bit float into a contiguous unsigned char* buffer. 
+
+   @param num The number to be packed.
+   
+   @return 0 if success. non-zero if failure.
+*/
+int
+rb_xnd_pack_float32(double num, unsigned char* ptr, int flags)
+{
+  
+}
+
+#ifdef XND_DEBUG
+/* Functions for testing packing/unpacking functions. 
+
+   In order to avoid the need for injecting the dependency of a C testing framework,
+   these are tests that work with the pack/unpack functions and are called in the
+   Init_ function if XND_DEBUG is defined.
+*/
+
+void test_pack_float32(void)
+{
+}
+
+void test_unpack_float32(void)
+{
+}
+
+void test_pack_float64(void)
+{
+}
+
+void test_unpack_float64(void)
+{
+}
+#endif
