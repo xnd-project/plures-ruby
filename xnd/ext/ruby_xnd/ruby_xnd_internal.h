@@ -68,6 +68,7 @@ typedef struct MemoryBlockObject MemoryBlockObject;
 # error ---->> ruby requires sizeof(void*) == sizeof(long) or sizeof(LONG_LONG) to be compiled. <<----
 #endif
 
-#define NUM2BOOL(t) (t ? Qtrue : Qfalse)
+/* Convert C int 't' to Ruby 'true' or 'false'. */
+#define INT2BOOL(t) (t ? Qtrue : Qfalse)
 
 #endif  /* RUBY_XND_INTERNAL_H */

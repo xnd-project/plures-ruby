@@ -90,8 +90,8 @@ describe XND do
       end      
     end
 
-    context "VarDim" do
-      DTYPE_EMPTY_TEST_CASES.each do |v, s|
+    context "VarDim", focus: true do
+      DTYPE_EMPTY_TEST_CASES[0..10].each do |v, s|
         [
           [[v] * 0, "var(offsets=[0,0]) * #{s}"],
           [[v] * 1, "var(offsets=[0,1]) * #{s}"],
@@ -206,7 +206,7 @@ describe XND do
         ].each do |vv, ss|
           it "type: #{ss}" do
             t = NDT.new ss
-            x = XND.new ss
+            x = XND.empty ss
           
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
@@ -216,7 +216,7 @@ describe XND do
       end
     end
 
-    context "Record" do
+    context "Record", focus: true do
       DTYPE_EMPTY_TEST_CASES.each do |v, s|
         [
           [{'x' => v}, "{x: #{s}}"],
@@ -229,11 +229,11 @@ describe XND do
         ].each do |vv, ss|
           it "type: #{ss}" do
             t = NDT.new ss
-            x = XND.new ss
+            x = XND.empty ss
                       
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
-            expect(x.size).to eq(vv.size)       
+            expect(x.size).to eq(vv.size)
           end
         end
       end
@@ -258,7 +258,7 @@ describe XND do
         ].each do |vv, ss|
           it "type: #{ss}" do
             t = NDT.new ss
-            x = XND.new ss
+            x = XND.empty ss
             
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
@@ -280,7 +280,7 @@ describe XND do
         ].each do |vv, ss|
           it "type: #{ss}" do
             t = NDT.new ss
-            x = XND.new ss
+            x = XND.empty ss
             
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
@@ -302,7 +302,7 @@ describe XND do
         ].each do |vv, ss|
           it "type: #{ss}" do
             t = NDT.new ss
-            x = XND.new ss
+            x = XND.empty ss
             
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
@@ -314,7 +314,7 @@ describe XND do
       end
     end
 
-    context "Categorical" do
+    context "Categorical", focus: true do
       # Categorical values are stored as indices into the type's categories.
       # Since empty xnd objects are initialized to zero, the value of an
       # empty categorical entry is always the value of the first category.

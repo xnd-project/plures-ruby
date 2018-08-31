@@ -1,6 +1,25 @@
 require 'xnd'
 require 'pry'
 
+class Logger
+  def initialize(io,fn)
+    @io=io
+    @fn=fn
+  end
+  def <<(str) write(str) end
+  def print(str) write(str) end
+  def puts(str) write("#{str}\n") end
+  def putc(c) write( (c.is_a? Numeric) ? c.chr.to_s : c[0,1]) end
+  def write(str)
+    @io.print(str)
+    File.open(@fn,"a+") { |f| f.write(str) }
+  end
+end
+
+# test...
+
+$stdout=Logger.new($stdout,"trace.log")
+
 def expect_strict_equal x1, x2
   expect(x1.strict_equal(x2)).to eq(true)
   expect(x1).to eq(x2)
@@ -205,7 +224,6 @@ DTYPE_EMPTY_TEST_CASES = [
 
   # Primitive types
   [false, "bool"],
-  [0, "bool"],
 
   [0, "int8"],
   [0, "int16"],
@@ -250,7 +268,6 @@ DTYPE_EMPTY_TEST_CASES = [
 
   # References
   [false, "&bool"],
-  [0, "&bool"],
 
   [0, "&int8"],
   [0, "&int16"],
@@ -371,7 +388,6 @@ DTYPE_EMPTY_TEST_CASES = [
 
   # Constructors
   [false, "Some(bool)"],
-  [0, "Some(bool)"],
 
   [0, "Some(int8)"],
   [0, "Some(int16)"],

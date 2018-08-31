@@ -64,9 +64,8 @@ safe_downcast(int64_t size)
 {
 #if SIZE_MAX < INT64_MAX
     if (size > INT32_MAX) {
-      set_error(rb_eSizeError,
+      rb_raise(rb_eSizeError,
                 "sizes should never exceed INT32_MAX on 32-bit platforms.");
-      return -1;
     }
 #endif
     return (size_t)size;
@@ -93,5 +92,17 @@ array_new(int64_t size)
     return rb_ary_new2(size);
 #endif
 }
+
+static inline VALUE
+bytes_from_string_and_size(const char *str, int64_t size)
+{
+#if SIZE_MAX < INT64_MAX
+    size_t n = safe_downcast(size);
+    return n < 0 ? NULL : rb_str_new(str, n);
+#else
+    return rb_str_new(str, size);
+#endif
+}
+
 
 #endif  /* UTIL_H */

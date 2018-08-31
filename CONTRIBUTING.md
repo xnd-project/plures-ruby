@@ -27,3 +27,17 @@ Links:
 
 * http://clalance.blogspot.com/2011/01/writing-ruby-extensions-in-c-part-5.html
     rb_set_errinfo(rb_exc_new2(rb_eAllocError, ))
+
+# Differences between Python and Ruby wrappers
+
+Some differences do arise between the Python and Ruby wrappers mainly due to semantic
+differences between the two languages. For example, in Python `True` and `False` are
+simply keywords for `1` and `0` respectively. Therefore, `if 0:` in Python will evaluate
+to `false`. Therefore `False == 0` in Python evaluates to `true` in Python.
+
+However, in Ruby, `false` and `nil` are the only real `falsey` values and everything else
+is `truthy` (including `0`). `false == 0` evaluates to `false` in Ruby due to this reason.
+
+Therefore, when creating boolean typed arrays, the result will always be in terms of `true`
+and `false` in Ruby whereas in Python it can be `0` or `False` for falsey values and anything
+else for truth-y.

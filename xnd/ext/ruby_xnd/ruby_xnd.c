@@ -871,6 +871,7 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
     for (i = 0; i < shape; ++i) {
       if (i == maxshape - i) {
         rb_hash_aset(hash, xnd_ellipsis(), xnd_ellipsis());
+        break;
       }
 
       xnd_t next = xnd_record_next(x, i, &ctx);
@@ -882,7 +883,7 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
       rb_hash_aset(hash, rb_str_new2(t->Record.names[i]), v);
     }
 
-    return 0;
+    return hash;
   }
 
   case Ref: {
@@ -917,9 +918,9 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
   }
 
   case Bool: {
-    int temp;
+    bool temp;
     UNPACK_SINGLE(temp, x->ptr, bool, t->flags);
-    return NUM2BOOL(temp);
+    return INT2BOOL(temp);
   }
 
   case Int8: {
@@ -990,6 +991,8 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
   }
 
   case FixedString: {
+    int64_t codepoints = t->FixedString.size;
+    
     switch (t->FixedString.encoding) {
     case Ascii: {
     }
@@ -1008,8 +1011,7 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
 
     default: {
       rb_raise(rb_eRuntimeError, "invaling string encoding.");
-    }
-      
+    } 
     }
   }
 
@@ -1017,18 +1019,61 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
   }
 
   case String: {
+    const char *s = XND_POINTER_DATA(x->ptr);
+    size_t size = s ? strlen(s) : 0;
+
+    return rb_str_new(s, size);
   }
 
   case Bytes: {
+    char *s = (char *)XND_BYTES_DATA(x->ptr);
+    size_t size = s ? strlen(s) : 0;
+
+    return bytes_from_string_and_size(s, size);
   }
 
   case Categorical: {
+    int64_t k;
+
+    UNPACK_SINGLE(k, x->ptr, int64_t, t->flags);
+
+    switch(t->Categorical.types[k].tag) {
+    case ValBool: {
+      bool temp = t->Categorical.types[k].ValBool;
+      return INT2BOOL(temp);
+    }
+
+    case ValInt64: {
+      int64_t temp = t->Categorical.types[k].ValInt64;
+      return LL2NUM(temp);
+    }
+
+    case ValFloat64: {
+      double temp = t->Categorical.types[k].ValFloat64;
+      return DBL2NUM(temp);
+    }
+
+    case ValString: {
+      const char *temp = t->Categorical.types[k].ValString;
+      return rb_str_new2(temp);
+    }
+
+    case ValNA: {
+      return Qnil;
+    }
+
+    default: {
+      rb_raise(rb_eRuntimeError, "unexpected category tag.");
+    }
+    }
   }
 
   case Char: {
+    rb_raise(rb_eNotImpError, "char semantics need to be defined.");
   }
 
   case Module: {
+    rb_raise(rb_eNotImpError, "'Module' type not implemented yet.");
   }
 
     /* NOT REACHED: intercepted by ndt_is_abstract(). */
