@@ -10,7 +10,7 @@ end
   have_header(header)
 end
 
-basenames = %w{gc_guard ruby_xnd}
+basenames = %w{float_pack_unpack gc_guard ruby_xnd}
 $objs = basenames.map { |b| "#{b}.o"   }
 $srcs = basenames.map { |b| "#{b}.c" }
 

@@ -38,7 +38,7 @@
 #ifndef RUBY_XND_INTERNAL_H
 #define RUBY_XND_INTERNAL_H
 
-#define XND_DEBUG 1
+//#define XND_DEBUG NULL
 
 #ifdef XND_DEBUG
 #include <assert.h>
@@ -48,6 +48,7 @@
 #include "ruby_ndtypes.h"
 #include "ruby_xnd.h"
 #include "util.h"
+#include "float_pack_unpack.h"
 
 extern VALUE mRubyXND_GCGuard;
 
