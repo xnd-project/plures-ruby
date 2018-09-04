@@ -37,9 +37,11 @@
 #include "ruby_xnd_internal.h"
 
 #ifdef WORDS_BIGENDIAN
-  #define IEEE_BIG_ENDIAN_P 1
+#define IEEE_BIG_ENDIAN_P 1
+#define IEEE_LITTLE_ENDIAN_P NULL
 #else
-  #define IEEE_LITTLE_ENDIAN_P 1  
+#define IEEE_LITTLE_ENDIAN_P 1
+#define IEEE_BIG_ENDIAN_P NULL
 #endif
 
 /* Pack a 32-bit float into a contiguous unsigned char* buffer. 
@@ -52,15 +54,42 @@
    @param le Le is a boolean argument. True if you want the string in
    litte-endian format, false if you want it in big-endian format.
    
-   @return 0 if success. non-zero if failure.
+   @return 0 if success. Raise ruby error if failure.
 */
 int
 rb_xnd_pack_float32(double num, unsigned char* ptr, int le)
 {
-  /* determine endian-ness of floating point numbers. */
-  /* check if the format is known */
-  /* if not known do some crazy stuff and find out. */
-  /* if known, simply use litte/endian defaults and loop over it. */
+  float y = (float)num;
+  int i, incr = 1;
+
+  if (isinf(y) || isnan(y)) {
+    goto Overflow;
+  }
+
+  unsigned char s[sizeof(float)];
+  memcpy(s, &y, sizeof(float));
+
+#ifdef XND_DEBUG
+  if (!le) { // choose big-endian
+    ptr += 3;
+    incr = -1;
+  }
+#else
+  if ((IEEE_LITTLE_ENDIAN_P && !le) || (IEEE_BIG_ENDIAN_P && le)) { // choose big-endian
+    ptr += 3;
+    incr = -1;
+  }
+#endif
+
+  for (i = 0; i < sizeof(float); ++i) {
+    *ptr = s[i];
+    ptr += incr;
+  }
+
+  return 0;
+
+ Overflow:
+  rb_raise(rb_eArgError, "cannot pack infinity/nan floating point number.");
 }
 
 /* Unpack a 32-bit float from a contiguos unsigned char* buffer. 
@@ -68,14 +97,106 @@ rb_xnd_pack_float32(double num, unsigned char* ptr, int le)
    @param ptr : 
    @param le Le is a boolean argument. True if you want the string in
    litte-endian format, false if you want it in big-endian format.
-   
 
    @return unpacked number as a double.
 */
-double
+float
 rb_xnd_unpack_float32(unsigned char* ptr, int le)
 {
-  
+  float x;
+
+#ifdef XND_DEBUG
+  if (!le) // big-endian
+#else
+    if ((IEEE_LITTLE_ENDIAN_P && !le) || (IEEE_BIG_ENDIAN_P && le))// big-endian
+#endif
+      {
+        char buf[4];
+        char *d = &buf[3];
+        int i;
+
+        for (i = 0; i < sizeof(float); ++i) {
+          *d-- = *ptr++;
+        }
+        memcpy(&x, buf, sizeof(float));
+      }
+    else {
+      memcpy(&x, ptr, sizeof(float));
+    }
+
+  return x;
+}
+
+/* Pack 64 bit floating point number into an unsigned char array.
+
+   @param num
+   @param ptr
+   @param le
+ */
+int
+rb_xnd_pack_float64(double num, unsigned char *ptr, int le)
+{
+  int i, incr = 1;
+
+  if (isinf(num) || isnan(num)) {
+    goto Overflow;
+  }
+
+  unsigned char s[sizeof(double)];
+  memcpy(s, &num, sizeof(double));
+
+#ifdef XND_DEBUG
+  if (!le) { // choose big-endian
+    ptr += 7;
+    incr = -1;
+  }
+#else
+  if ((IEEE_LITTLE_ENDIAN_P && !le) || (IEEE_BIG_ENDIAN_P && le)) { // choose big-endian
+    ptr += 7;
+    incr = -1;
+  }
+#endif
+
+  for (i = 0; i < sizeof(double); ++i) {
+    *ptr = s[i];
+    ptr += incr;
+  }
+
+  return 0;
+
+ Overflow:
+  rb_raise(rb_eArgError, "cannot pack infinity/nan floating point number.");
+
+}
+
+/* Unpack a 64-bit floating point number from an unsigned char array and return
+   the resulting number as a type double.
+ */
+double
+rb_xnd_unpack_float64(unsigned char *ptr, int le)
+{
+  double x;
+
+#ifdef XND_DEBUG
+  if (!le) // big-endian
+#else
+    if ((IEEE_LITTLE_ENDIAN_P && !le) || (IEEE_BIG_ENDIAN_P && le))// big-endian
+#endif
+      {
+        char buf[sizeof(double)];
+        char *d = &buf[sizeof(double)-1];
+        int i;
+
+        for (i = 0; i < sizeof(double); ++i) {
+          *d-- = *ptr++;
+        }
+        memcpy(&x, buf, sizeof(double));
+      }
+    else {
+      memcpy(&x, ptr, sizeof(double));
+    }
+
+  return x;
 }
 
 #ifdef XND_DEBUG
@@ -92,17 +213,14 @@ void test_pack_float32(void)
   unsigned char ptr[4];
 
   /* test big endian */
-  unsigned char ans_bige[4] = {0x00, 0x00, 0x40, 0x40};
-
+  unsigned char ans_bige[4] = {0x46, 0x80, 0x80, 0x00};
   rb_xnd_pack_float32(num, ptr, 0);
   for (i = 0; i < 4; i++) {
     assert(ans_bige[i] == ptr[i]);
   }
 
   /* test little endian */
-  
-  unsigned char ans_lite[4] = {0x40, 0x40, 0x00, 0x00};
-
+  unsigned char ans_lite[4] = {0, 0X80, 0X80, 0X46};
   rb_xnd_pack_float32(num, ptr, 1);
   for (i = 0; i < 4; i++) {
     assert(ans_lite[i] == ptr[i]);
@@ -114,33 +232,29 @@ void test_unpack_float32(void)
   double answer = 16448.0;
   
   /* test big endian */
-  unsigned char ptr_bige[4] = {0x00, 0x00, 0x40, 0x40};
-
+  unsigned char ptr_bige[4] = {0x46, 0x80, 0x80, 0x00};
   assert(answer == rb_xnd_unpack_float32(ptr_bige, 0));
   
   /* test little endian */
-  unsigned char ptr_lite[4] = {0x40, 0x40, 0x00, 0x00};
-
+  unsigned char ptr_lite[4] = {0, 0X80, 0X80, 0X46};
   assert(answer == rb_xnd_unpack_float32(ptr_lite, 1));
 }
 
 void test_pack_float64(void)
 {
-  double num = 1090453616.0;
+  double num = 16448.0;
   int i;
   unsigned char ptr[8];
 
   /* test big endian. */
-  unsigned char ans_bige[8] = {0x00, 0x00, 0x00, 0x00, 0x40, 0xFF, 0x00, 0x70};
-
+  unsigned char ans_bige[8] = {0x40, 0xD0, 0x10, 0, 0, 0, 0, 0};
   rb_xnd_pack_float64(num, ptr, 0);
   for (i = 0; i < 8; i++) {
     assert(ans_bige[i] == ptr[i]);
   }
 
-  /* test big endian. */
-  unsigned char ans_lite[8] = {0x40, 0xFF, 0x00, 0x70, 0x00, 0x00, 0x00, 0x00};
-
+  /* test littel endian. */
+  unsigned char ans_lite[8] = {0, 0, 0, 0, 0, 0X10, 0XD0, 0X40};
   rb_xnd_pack_float64(num, ptr, 1);
   for (i = 0; i < 8; i++) {
     assert(ans_lite[i] == ptr[i]);
@@ -149,16 +263,22 @@ void test_pack_float64(void)
 
 void test_unpack_float64(void)
 {
-  double answer = 1090453616.0;
+  double answer = 16448.0;
 
   /* test big-endian */
-  unsigned char ptr_bige[8] = {0x00, 0x00, 0x00, 0x00, 0x40, 0xFF, 0x00, 0x70};
-
-  assert(answer == rb_xnd_pack_float64(ptr_bige, 0));
+  unsigned char ptr_bige[8] = {0x40, 0xD0, 0x10, 0, 0, 0, 0, 0};
+  assert(answer == rb_xnd_unpack_float64(ptr_bige, 0));
 
   /* test little-endian */
-  unsigned char ptr_lite[8] = {0x40, 0xFF, 0x00, 0x70, 0x00, 0x00, 0x00, 0x00};
+  unsigned char ptr_lite[8] = {0, 0, 0, 0, 0, 0X10, 0XD0, 0X40};
+  assert(answer == rb_xnd_unpack_float64(ptr_lite, 1));
+}
 
-  assert(answer == rb_xnd_pack_float64(ptr_lite, 1));
+void run_float_pack_unpack_tests(void)
+{
+  test_pack_float32();
+  test_unpack_float32();
+  test_pack_float64();
+  test_unpack_float64();
 }
 #endif

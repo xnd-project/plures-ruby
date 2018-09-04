@@ -35,8 +35,5 @@
 */
 
 #ifdef XND_DEBUG
-void test_pack_float32(void);
-void test_unpack_float32(void);
-void test_pack_float64(void);
-void test_unpack_float64(void);
+void run_float_pack_unpack_tests(void);
 #endif

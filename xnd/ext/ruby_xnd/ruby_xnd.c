@@ -1425,17 +1425,11 @@ void Init_ruby_xnd(void)
   /* singleton methods */
   rb_define_singleton_method(cXND, "empty", XND_s_empty, 1);
 
-  /* constants */
-
-
   /* GC guard */
   rb_xnd_init_gc_guard();
 
 #ifdef XND_DEBUG
-  test_pack_float32();
-  test_unpack_float32();
-  test_pack_float64();
-  test_unpack_float64();
+  run_float_pack_unpack_tests();
   rb_define_const(cRubyXND, "XND_DEBUG", Qtrue);
 #else
   rb_define_const(cRubyXND, "XND_DEBUG", Qnil);
