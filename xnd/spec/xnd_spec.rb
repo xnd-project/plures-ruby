@@ -35,7 +35,7 @@ describe XND do
         end
       end
 
-      context "Bytes", focus: true do
+      context "Bytes", f: true do
         t = ["lagrange".b, "points".b]
         typeof_t = "(bytes, bytes)"
 
@@ -51,6 +51,8 @@ describe XND do
           it "type: {t}" do
             x = XND.new v
 
+            puts "x: #{x.type}"
+            puts "t: #{NDT.new(t)}"
             expect(x.type).to eq(NDT.new(t))
             expect(x.value).to eq(v)
           end

@@ -633,6 +633,27 @@ mblock_init(xnd_t * const x, VALUE data)
   }
 
   case Bytes: {
+    size_t size;
+    char *cp, *s;
+
+    size = RSTRING_LEN(data);
+    cp = StringValuePtr(data);
+
+    s = ndt_aligned_calloc(t->Bytes.target_align, size);
+    if (s == NULL) {
+      rb_raise(rb_eNoMemError, "no memory for allocating bytes.");
+    }
+
+    memcpy(s, cp, size);
+
+    if (XND_BYTES_DATA(x->ptr)) {
+      ndt_aligned_free(XND_BYTES_DATA(x->ptr));
+    }
+
+    XND_BYTES_SIZE(x->ptr) = size;
+    XND_BYTES_DATA(x->ptr) = (uint8_t *)s;
+
+    return 0;
   }
 
   case Categorical: {

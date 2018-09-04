@@ -89,7 +89,7 @@ class XND < RubyXND
 
           ret = t
         elsif !dtype.nil?
-          raise TypeError, "dtype arguement is only supported for Arrays."
+          raise TypeError, "dtype argument is only supported for Arrays."
         elsif value.is_a? Hash
           if value.keys.all? { |k| k.is_a?(String) }
             ret = "{" + value.map { |k, v| "#{k} : #{actual_type_of(v)}"}.join(", ") + "}"
