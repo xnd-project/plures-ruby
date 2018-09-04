@@ -40,7 +40,7 @@ describe XND do
         }.to raise_error(ArgumentError)
       end
 
-      it "raises ValueError for wrong input type in int64 array" do
+      skip "raises ValueError for wrong input type in int64 array" do
         t = NDT.new "2 * 3 * int64"
         expect {
           XND.new([[1,2,"peep!"], [2,3,4]], type: t)
@@ -341,7 +341,7 @@ describe XND do
       end
     end
 
-    skip "FixedString" do
+    context "FixedString" do
       it "tests kind of string" do
         expect {
           XND.empty "FixedString"

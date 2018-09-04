@@ -45,6 +45,7 @@ extern "C" {
 #include "xnd.h"
 
   size_t rb_xnd_hash_size(VALUE hash);
+  int rb_xnd_get_complex_values(VALUE comp, double *real, double *imag);
 
 #ifdef __cplusplus
 }

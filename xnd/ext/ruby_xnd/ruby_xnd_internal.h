@@ -38,7 +38,7 @@
 #ifndef RUBY_XND_INTERNAL_H
 #define RUBY_XND_INTERNAL_H
 
-#define XND_DEBUG 1
+//#define XND_DEBUG 1
 
 #ifdef XND_DEBUG
 #include <assert.h>

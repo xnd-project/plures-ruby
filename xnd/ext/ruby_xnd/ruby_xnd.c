@@ -472,22 +472,43 @@ mblock_init(xnd_t * const x, VALUE data)
   }
 
   case Float16: {
-    /* TODO: implement float unpacking functions. */
+    rb_raise(rb_eNotImpError, "float16 not implemented.");
   }
 
   case Float32: {
+    double temp = NUM2DBL(data);
+    return rb_xnd_pack_float32(temp, (unsigned char*)x->ptr, le(t->flags));
   }
 
   case Float64: {
+    double temp = NUM2DBL(data);
+    return rb_xnd_pack_float64(temp, (unsigned char*)x->ptr, le(t->flags));
   }
 
   case Complex32: {
+    rb_raise(rb_eNotImpError, "complex32 not implemented.");
   }
 
   case Complex64: {
+    double real, imag;
+
+    rb_xnd_get_complex_values(data, &real, &imag);
+    
+    rb_xnd_pack_float32(real, (unsigned char*)x->ptr, le(t->flags));
+    rb_xnd_pack_float32(imag, (unsigned char*)x->ptr + 4, le(t->flags));
+
+    return 0;
   }
 
   case Complex128: {
+    double real, imag;
+
+    rb_xnd_get_complex_values(data, &real, &imag);
+    
+    rb_xnd_pack_float64(real, (unsigned char*)x->ptr, le(t->flags));
+    rb_xnd_pack_float64(imag, (unsigned char*)x->ptr + 8, le(t->flags));
+
+    return 0;
   }
 
   case FixedString: {
@@ -972,22 +993,39 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
   }
 
   case Float16: {
-    /* TODO: implement float packing functions. */
+    rb_raise(rb_eNotImpError, "float16 is not implemented.");
   }
 
   case Float32: {
+    double temp = (double)rb_xnd_unpack_float32((unsigned char*)x->ptr, le(t->flags));
+    return DBL2NUM(temp);
   }
 
   case Float64: {
+    double temp = rb_xnd_unpack_float64((unsigned char*)x->ptr, le(t->flags));
+    return DBL2NUM(temp);
   }
 
   case Complex32: {
+    rb_raise(rb_eNotImpError, "complex32 not implemented.");
   }
 
   case Complex64: {
+    double real, imag;
+
+    real = (double)rb_xnd_unpack_float32((unsigned char*)x->ptr, le(t->flags));
+    imag = (double)rb_xnd_unpack_float32((unsigned char*)x->ptr+4, le(t->flags));
+
+    return rb_complex_new(DBL2NUM(real), DBL2NUM(imag));
   }
 
   case Complex128: {
+    double real, imag;
+
+    real = rb_xnd_unpack_float64((unsigned char*)x->ptr, le(t->flags));
+    imag = rb_xnd_unpack_float64((unsigned char*)x->ptr+8, le(t->flags));
+
+    return rb_complex_new(DBL2NUM(real), DBL2NUM(imag));
   }
 
   case FixedString: {
@@ -1395,6 +1433,21 @@ rb_xnd_hash_size(VALUE hash)
   Check_Type(hash, T_HASH);
 
   return NUM2ULL(rb_funcall(hash, rb_intern("size"), 0, NULL));
+}
+
+
+/* FIXME: Find a better way to access real/imag parts of complex number.
+   This is too slow.
+*/
+int
+rb_xnd_get_complex_values(VALUE comp, double *real, double *imag)
+{
+  Check_Type(comp, T_COMPLEX);
+  
+  *real = NUM2DBL(rb_funcall(comp, rb_intern("real"), 0, NULL));
+  *imag = NUM2DBL(rb_funcall(comp, rb_intern("imag"), 0, NULL));
+
+  return 0;
 }
 
 void Init_ruby_xnd(void)
