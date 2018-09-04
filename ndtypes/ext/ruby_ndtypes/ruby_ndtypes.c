@@ -494,8 +494,8 @@ rb_ndtypes_from_object(VALUE type)
                                           rbuf_ndt_meta(copy),
                                           cp, &ctx);
   if (NDT(copy_p) == NULL) {
-    rb_raise(rb_eNoMemError,
-             "could not allocate NDT object from string in rb_ndtypes_from_object.");
+    set_error_info(seterr(&ctx), "error in rb_ndtypes_from_object.");
+    raise_error();
   }
   rb_ndtypes_gc_guard_register(copy_p, RBUF(copy_p));
 
@@ -508,7 +508,8 @@ void Init_ruby_ndtypes(void)
 
   /* initialize NDT internals */
   ndt_init(&ctx);
-  
+
+  /* define classes */
   cNDTypes = rb_define_class("NDTypes", rb_cObject);
   cNDTypes_RBuf = rb_define_class_under(cNDTypes, "RBuf", rb_cObject);
   mNDTypes_GCGuard = rb_define_module_under(cNDTypes, "GCGuard");

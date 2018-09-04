@@ -49,6 +49,50 @@ static VALUE rb_eValueError;
 VALUE mRubyXND_GCGuard;
 
 /****************************************************************************/
+/*                               Error handling                             */
+/****************************************************************************/
+static VALUE
+seterr(ndt_context_t *ctx)
+{
+  VALUE exc = rb_eRuntimeError;
+
+  switch(ctx->err) {
+  case NDT_Success: /* should never be set on error */
+    exc = rb_eRuntimeError;
+    break;
+  case NDT_ValueError:
+    exc = rb_eValueError;
+    break;
+  case NDT_TypeError:
+    exc = rb_eTypeError;
+    break;
+  case NDT_InvalidArgumentError:
+    exc = rb_eValueError;
+    break;
+  case NDT_NotImplementedError:
+    exc = rb_eNotImpError;
+    break;
+  case NDT_IndexError:
+    exc = rb_eIndexError;
+    break;
+  case NDT_LexError: case NDT_ParseError:
+    exc = rb_eValueError;
+    break;
+  case NDT_OSError:
+    exc = rb_eSysStackError;
+    break;
+  case NDT_RuntimeError:
+    exc = rb_eRuntimeError;
+    break;
+  case NDT_MemoryError:
+    exc = rb_eNoMemError;
+    break;
+  }
+
+  return exc;
+}
+
+/****************************************************************************/
 /*                           Singletons                                     */
 /****************************************************************************/
 static VALUE
@@ -147,7 +191,7 @@ mblock_empty(VALUE type)
   MemoryBlockObject *mblock_p;
   
   if (!rb_ndtypes_check_type(type)) {
-    // error
+    rb_raise(rb_eArgError, "require NDT object to create mblock in mblock_empty.");
   }
 
   mblock_p = mblock_alloc();
@@ -155,7 +199,7 @@ mblock_empty(VALUE type)
                                       rb_ndtypes_const_ndt(type),
                                       XND_OWN_EMBEDDED, &ctx);
   if (mblock_p->xnd == NULL) {
-    
+    rb_raise(rb_eValueError, "cannot create mblock object from given type.");
   }
   mblock_p->type = type;
 

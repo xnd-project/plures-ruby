@@ -31,6 +31,7 @@
 require 'ndtypes'
 require "ruby_xnd.so"
 
+require 'xnd/monkeys'
 require 'xnd/version'
 
 class RubyXND
@@ -104,7 +105,7 @@ class XND < RubyXND
         elsif value.is_a? Integer
           ret = 'int64'
         elsif value.is_a? String
-          ret = 'string'
+          ret = value.encoding == Encoding::ASCII ? 'bytes' : 'string'
         else
           raise ArgumentError, "cannot infer data type for: #{value}"
         end
@@ -189,7 +190,7 @@ class XND < RubyXND
 
         data = acc[max_level]
         shapes = acc[0...max_level].reverse
-p
+
         [data, shapes]
       end
 

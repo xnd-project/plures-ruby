@@ -54,7 +54,7 @@ raise_error(void)
 }
 
 inline void
-set_error(VALUE err, const char * msg)
+set_error_info(VALUE err, const char * msg)
 {
   rb_set_errinfo(rb_exc_new2(err, msg));
 }

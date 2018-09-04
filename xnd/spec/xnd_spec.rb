@@ -13,9 +13,49 @@ describe XND do
 
       # int64
 
-      # string
+      context "String", focus: true do
+        t = ["supererogatory", "exiguous"]
+        typeof_t = "(string, string)"
 
-      # bytes
+        [
+          [["mov"], "1 * string"],
+          [["mov", "$0"], "2 * string"],
+          [[["cmp"], ["$0"]], "2 * 1 * string"],
+
+          [t, typeof_t],
+          [[t] * 2, "2 * %s" % typeof_t],
+          [[[t] * 2] * 10, "10 * 2 * %s" % typeof_t]
+        ].each do |v, t|
+          it "type: #{t}" do
+            x = XND.new v
+
+            expect(x.type).to eq(NDT.new(t))
+            expect(x.value).to eq(v)            
+          end
+        end
+      end
+
+      context "Bytes", focus: true do
+        t = ["lagrange".b, "points".b]
+        typeof_t = "(bytes, bytes)"
+
+        [
+          [["L1".b], "1 * bytes"],
+          [["L2".b, "L3".b, "L4".b], "3 * bytes"],
+          [[["L5".b], ["none".b]], "2 * 1 * bytes"],
+
+          [t, typeof_t],
+          [[t] * 2, "2 * %s" % typeof_t],
+          [[[t] * 2] * 10, "10 * 2 * %s" % typeof_t]
+        ].each do |v, t|
+          it "type: {t}" do
+            x = XND.new v
+
+            expect(x.type).to eq(NDT.new(t))
+            expect(x.value).to eq(v)
+          end
+        end
+      end
 
       # optional
     end
@@ -90,7 +130,7 @@ describe XND do
       end      
     end
 
-    context "VarDim", focus: true do
+    context "VarDim" do
       DTYPE_EMPTY_TEST_CASES[0..10].each do |v, s|
         [
           [[v] * 0, "var(offsets=[0,0]) * #{s}"],
@@ -169,7 +209,7 @@ describe XND do
       end
     end
 
-    skip "EllipsisDim" do
+    context "EllipsisDim" do
       DTYPE_EMPTY_TEST_CASES.each do |_, s|
         [
           [ValueError, "... * #{s}"],
@@ -216,7 +256,7 @@ describe XND do
       end
     end
 
-    context "Record", focus: true do
+    context "Record" do
       DTYPE_EMPTY_TEST_CASES.each do |v, s|
         [
           [{'x' => v}, "{x: #{s}}"],
@@ -314,7 +354,7 @@ describe XND do
       end
     end
 
-    context "Categorical", focus: true do
+    context "Categorical" do
       # Categorical values are stored as indices into the type's categories.
       # Since empty xnd objects are initialized to zero, the value of an
       # empty categorical entry is always the value of the first category.
@@ -341,7 +381,7 @@ describe XND do
       end
     end
 
-    context "FixedString" do
+    context "FixedString", focus: true do
       it "tests kind of string" do
         expect {
           XND.empty "FixedString"
@@ -372,7 +412,7 @@ describe XND do
       # TODO: figure how to deal with byte strings in Ruby.
     end
 
-    context "String" do
+    context "String", focus: true do
       [
         'string',
         '(string)',
@@ -408,11 +448,29 @@ describe XND do
       end
     end
 
-    context "Bytes" do
-      # TODO: figure this out.
+    context "Bytes", focus: true do
+      r = { 'a' => "".b, 'b' => "".b }
+      
+      [
+        [''.b, 'bytes(align=16)'],
+        [[''.b], '(bytes(align=32))'],
+        [[[''.b] * 2] * 3, '3 * 2 * bytes'],
+        [[[[''.b, ''.b]] * 2] * 10, '10 * 2 * (bytes, bytes)'],
+        [[[r] * 2] * 10, '10 * 2 * {a: bytes(align=32), b: bytes(align=1)}'],
+        [[[r] * 2] * 10, '10 * 2 * {a: bytes(align=1), b: bytes(align=32)}'],
+        [[[r] * 2, [r] * 5, [r] * 3], 'var(offsets=[0,3]) * var(offsets=[0,2,7,10]) * {a: bytes(align=32), b: bytes}']
+      ].each do |v, s|
+        it "type: #{s}" do
+          t = NDT.new s
+          x = XND.empty t
+
+          expect(x.type).to eq(t)
+          expect(x.value).to eq(v)
+        end
+      end
     end
 
-    skip "Char" do
+    context "Char" do
       it "raises NotImplementedError" do
         expect {
           XND.empty "char('utf8')"
@@ -420,7 +478,7 @@ describe XND do
       end
     end
 
-    skip "SignedKind" do
+    context "SignedKind" do
       it "raises ValueError" do
         expect {
           XND.empty "Signed"
@@ -428,7 +486,7 @@ describe XND do
       end
     end
 
-    skip "UnsignedKind" do
+    context "UnsignedKind" do
       it "raises ValueError" do
         expect {
           XND.empty "Unsigned"
@@ -436,7 +494,7 @@ describe XND do
       end
     end
 
-    skip "FloatKind" do
+    context "FloatKind" do
       it "raises ValueError" do
         expect {
           XND.empty "Float"
@@ -444,7 +502,7 @@ describe XND do
       end
     end
 
-    skip "ComplexKind" do
+    context "ComplexKind" do
       it "raises ValueError" do
         expect {
           XND.empty "Complex"
@@ -467,7 +525,7 @@ describe XND do
       end
     end
 
-    skip "TypeVar" do
+    context "TypeVar" do
       [
         "T",
         "2 * 10 * T",
