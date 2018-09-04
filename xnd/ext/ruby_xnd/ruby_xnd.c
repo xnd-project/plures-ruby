@@ -214,6 +214,59 @@ _strncpy(char *dest, const void *src, size_t len, size_t size)
     memset(dest+len, '\0', size-len);
 }
 
+/* Return true if String is unicode. */
+static int
+string_is_unicode(VALUE str)
+{
+  
+}
+
+
+static int
+string_is_ascii(VALUE str)
+{
+  return RB_ENCODING_IS_ASCII8BIT(str);
+}
+
+/* FIXME: Below functions make Ruby function calls. Find more efficient way. */
+
+/* Return true if String is UTF-8 encoding. */
+static int
+string_is_u8(VALUE str)
+{
+  return RTEST(
+               rb_funcall(
+                    rb_funcall(str, rb_intern("encoding"), 0, NULL),
+                    rb_intern("=="), 1,
+                    rb_const_get(rb_cEncoding, "UTF_8")
+                          )
+               );
+}
+
+static int
+string_is_u16(VALUE str)
+{
+  return RTEST(
+               rb_funcall(
+                          rb_funcall(str, rb_intern("encoding"), 0, NULL),
+                          rb_intern("=="), 1,
+                          rb_const_get(rb_cEncoding, "UTF_16")
+                          )
+               );
+}
+
+static int
+string_is_u32(VALUE str)
+{
+  return RTEST(
+               rb_funcall(
+                          rb_funcall(str, rb_intern("encoding"), 0, NULL),
+                          rb_intern("=="), 1,
+                          rb_const_get(rb_cEncoding, "UTF_32")
+                          )
+               );
+}
+
 static int64_t
 u8_skip_trailing_zero(const uint8_t *ptr, int64_t codepoints)
 {
@@ -563,7 +616,9 @@ mblock_init(xnd_t * const x, VALUE data)
     
     switch (t->FixedString.encoding) {
     case Ascii: {
-      /* FIXME: check for ASCII string. */
+      if (!string_is_ascii(data)) {
+        rb_raise(rb_eValueError, "string must be ascii");
+      }
 
       len = RSTRING_LEN(data);
       if (len > t->datasize) {
@@ -576,7 +631,10 @@ mblock_init(xnd_t * const x, VALUE data)
     }
       
     case Utf8: {
-      /* FIXME: check for utf-8 string. */
+      if (!string_is_utf8(data)) {
+        rb_raise(rb_eValueError, "string must be utf-8");
+      }
+
       len = RSTRING_LEN(data);
       if (len > t->datasize) {
         rb_raise(rb_eValueError,
@@ -1098,6 +1156,7 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
     
     switch (t->FixedString.encoding) {
     case Ascii: {
+
     }
       
     case Utf8: {
@@ -1107,13 +1166,14 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
     }
 
     case Utf32: {
+
     }
 
     case Ucs2: {
     }
 
     default: {
-      rb_raise(rb_eRuntimeError, "invaling string encoding.");
+      rb_raise(rb_eRuntimeError, "invalid string encoding.");
     } 
     }
   }

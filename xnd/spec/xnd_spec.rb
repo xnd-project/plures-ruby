@@ -35,7 +35,7 @@ describe XND do
         end
       end
 
-      context "Bytes", f: true do
+      context "Bytes" do
         t = ["lagrange".b, "points".b]
         typeof_t = "(bytes, bytes)"
 
@@ -50,9 +50,7 @@ describe XND do
         ].each do |v, t|
           it "type: {t}" do
             x = XND.new v
-
-            puts "x: #{x.type}"
-            puts "t: #{NDT.new(t)}"
+            
             expect(x.type).to eq(NDT.new(t))
             expect(x.value).to eq(v)
           end
@@ -94,8 +92,22 @@ describe XND do
       
     end
 
-    context "FixedString" do
-      
+    context "FixedString", v: true do
+      it "creates FixedString utf16 array" do
+        t = "2 * fixed_string(3, 'utf16')"
+        v = ["\u1111\u2222\u3333", "\u1112\u2223\u3334"]
+        x = XND.new v, type: t
+
+        expect(x.value).to eq(v)
+      end
+
+      it "creates FixedString utf32 array" do
+        t = "2 * fixed_string(3, 'utf32')"
+        v = ["\U00011111\U00022222\U00033333", "\U00011112\U00022223\U00033334"]
+        x = XND.new v, type: t
+        
+        expect(x.value).to eq(v)
+      end
     end
   end
 
@@ -383,7 +395,7 @@ describe XND do
       end
     end
 
-    context "FixedString", focus: true do
+    context "FixedString", f: true do
       it "tests kind of string" do
         expect {
           XND.empty "FixedString"

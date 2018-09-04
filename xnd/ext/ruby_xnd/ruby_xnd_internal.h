@@ -45,6 +45,7 @@
 #endif
 
 #include "ruby.h"
+#include "ruby/encoding.h"
 #include "ruby_ndtypes.h"
 #include "ruby_xnd.h"
 #include "util.h"
