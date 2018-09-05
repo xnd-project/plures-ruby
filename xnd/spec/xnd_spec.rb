@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe XND do
   context ".new" do
-    context "Type Inference" do
+    skip "Type Inference" do
       # tuple
 
       # record
@@ -113,7 +113,7 @@ describe XND do
   end
 
   context ".empty" do
-    context "FixedDim", v: true do
+    context "FixedDim" do      
       DTYPE_EMPTY_TEST_CASES.each do |v, s|
         [
           [[v] * 0, "0 * #{s}" ],
@@ -187,7 +187,7 @@ describe XND do
 
           [[[v] * 1] * 1, "!1 * 1 * #{s}"],
           [[[v] * 2] * 1, "!1 * 2 * #{s}"],
-          [[[v] * 2] * 2, "!2 * 1 * #{s}"],
+          [[[v] * 1] * 2, "!2 * 1 * #{s}"],
           [[[v] * 2] * 2, "!2 * 2 * #{s}"],
           [[[v] * 3] * 2, "!2 * 3 * #{s}"],
           [[[v] * 2] * 3, "!3 * 2 * #{s}"],
@@ -396,7 +396,7 @@ describe XND do
       end
     end
 
-    context "FixedString", f: true do
+    context "FixedString", v: true do
       it "tests kind of string" do
         expect {
           XND.empty "FixedString"
@@ -423,11 +423,11 @@ describe XND do
       end
     end
 
-    context "FixedBytes" do
+    context "FixedBytes", v: true do
       # TODO: figure how to deal with byte strings in Ruby.
     end
 
-    context "String", focus: true do
+    context "String", v: true do
       [
         'string',
         '(string)',
@@ -458,7 +458,7 @@ describe XND do
 
         expect(x.type).to eq(t)
         0.upto(10) do |i| 
-          expect(x[i]).to eq('')
+          expect(x[i]).to eq(XND.new(['']))
         end
       end
     end

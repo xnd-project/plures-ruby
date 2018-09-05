@@ -54,42 +54,7 @@ VALUE mRubyXND_GCGuard;
 static VALUE
 seterr(ndt_context_t *ctx)
 {
-  VALUE exc = rb_eRuntimeError;
-
-  switch(ctx->err) {
-  case NDT_Success: /* should never be set on error */
-    exc = rb_eRuntimeError;
-    break;
-  case NDT_ValueError:
-    exc = rb_eValueError;
-    break;
-  case NDT_TypeError:
-    exc = rb_eTypeError;
-    break;
-  case NDT_InvalidArgumentError:
-    exc = rb_eValueError;
-    break;
-  case NDT_NotImplementedError:
-    exc = rb_eNotImpError;
-    break;
-  case NDT_IndexError:
-    exc = rb_eIndexError;
-    break;
-  case NDT_LexError: case NDT_ParseError:
-    exc = rb_eValueError;
-    break;
-  case NDT_OSError:
-    exc = rb_eSysStackError;
-    break;
-  case NDT_RuntimeError:
-    exc = rb_eRuntimeError;
-    break;
-  case NDT_MemoryError:
-    exc = rb_eNoMemError;
-    break;
-  }
-
-  return exc;
+  return rb_ndtypes_set_error(ctx);
 }
 
 /****************************************************************************/
@@ -373,7 +338,8 @@ mblock_init(xnd_t * const x, VALUE data)
 
     shape = ndt_var_indices(&start, &step, t, x->index, &ctx);
     if (shape < 0) {
-      /* set err wrt ctx. */
+      seterr(&ctx);
+      raise_error();
     }
 
     if (RARRAY_LEN(data) != shape) {
@@ -407,7 +373,8 @@ mblock_init(xnd_t * const x, VALUE data)
     for (i = 0; i < shape; i++) {
       xnd_t next = xnd_tuple_next(x, i, &ctx);
       if (next.ptr == NULL) {
-        /* raise error wrt ctx. */
+        seterr(&ctx);
+        raise_error();
       }
       VALUE rb_index[1] = { LL2NUM(i) };
       
@@ -431,7 +398,8 @@ mblock_init(xnd_t * const x, VALUE data)
     for (i = 0; i < shape; i++) {
       xnd_t next = xnd_record_next(x, i, &ctx);
       if (next.ptr == NULL) {
-        /* error by ctx */
+        seterr(&ctx);
+        raise_error();
       }
 
       temp = rb_hash_aref(data, rb_str_new2(t->Record.names[i]));
@@ -444,7 +412,8 @@ mblock_init(xnd_t * const x, VALUE data)
   case Ref: {
     xnd_t next = xnd_ref_next(x, &ctx);
     if (next.ptr == NULL) {
-      /* ctx error */
+      seterr(&ctx);
+      raise_error();
     }
 
     return mblock_init(&next, data);
@@ -453,7 +422,8 @@ mblock_init(xnd_t * const x, VALUE data)
   case Constr: {
     xnd_t next = xnd_constr_next(x, &ctx);
     if (next.ptr == NULL) {
-      
+      seterr(&ctx);
+      raise_error();      
     }
 
     return mblock_init(&next, data);
@@ -462,7 +432,8 @@ mblock_init(xnd_t * const x, VALUE data)
   case Nominal: {
     xnd_t next = xnd_nominal_next(x, &ctx);
     if (next.ptr == NULL) {
-      /* TODO: error w.r.t ctx. */
+      seterr(&ctx);
+      raise_error();
     }
 
     if (t->Nominal.meth->init != NULL) {
@@ -476,7 +447,8 @@ mblock_init(xnd_t * const x, VALUE data)
 
     if (t->Nominal.meth->constraint != NULL &&
         !t->Nominal.meth->constraint(&next, &ctx)) {
-      /* error by ctx. */
+      seterr(&ctx);
+      raise_error();
     }
 
     return 0;
@@ -690,7 +662,8 @@ mblock_init(xnd_t * const x, VALUE data)
     size = RSTRING_LEN(data);
     s = ndt_strdup(cp, &ctx);
     if (s == NULL) {
-      /* use seterr_intx */
+      seterr(&ctx);
+      raise_error();
     }
 
     if (XND_POINTER_DATA(x->ptr)) {
@@ -960,7 +933,8 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
 
     shape = ndt_var_indices(&start, &step, t, x->index, &ctx);
     if (shape < 0) {
-      /* error w.r.t ctx */
+      seterr(&ctx);
+      raise_error();
     }
 
     array = array_new(shape);
@@ -998,7 +972,8 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
 
       const xnd_t next = xnd_tuple_next(x, i, &ctx);
       if (next.ptr == NULL) {
-        /* TODO: raise error wrt ctx. */
+        seterr(&ctx);
+        raise_error();
       }
 
       v = _XND_value(&next, maxshape);
@@ -1031,7 +1006,8 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
 
       xnd_t next = xnd_record_next(x, i, &ctx);
       if (next.ptr == NULL) {
-        /* error wrt ctx */
+        seterr(&ctx);
+        raise_error();
       }
 
       v = _XND_value(&next, maxshape);
@@ -1044,7 +1020,8 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
   case Ref: {
     xnd_t next = xnd_ref_next(x, &ctx);
     if (next.ptr == NULL) {
-      /* error wr.t ctx. */
+      seterr(&ctx);
+      raise_error();
     }
 
     return _XND_value(&next, maxshape);
@@ -1053,7 +1030,8 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
   case Constr: {
     xnd_t next = xnd_constr_next(x, &ctx);
     if (next.ptr == NULL) {
-      
+      seterr(&ctx);
+      raise_error();
     }
 
     return _XND_value(&next, maxshape);
@@ -1062,7 +1040,8 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
   case Nominal: {
     xnd_t next = xnd_nominal_next(x, &ctx);
     if (next.ptr == NULL) {
-      
+      seterr(&ctx);
+      raise_error();      
     }
 
     if (t->Nominal.meth->repr != NULL) {
@@ -1201,13 +1180,14 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
   }
 
   case FixedBytes: {
+    return bytes_from_string_and_size(x->ptr, t->FixedBytes.size);
   }
 
   case String: {
     const char *s = XND_POINTER_DATA(x->ptr);
     size_t size = s ? strlen(s) : 0;
 
-    return rb_str_new(s, size);
+    return rb_utf8_str_new(s, size);
   }
 
   case Bytes: {

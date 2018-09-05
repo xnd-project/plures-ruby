@@ -124,9 +124,9 @@ DTYPE_EMPTY_TEST_CASES = [
   [[[nil], [[0.0i, [[""] * 2] * 10]] * 2, [nil] * 3], "(1 * ?bytes, 2 * (complex128, 10 * 2 * string), 3 * ?string)"],
   [[[nil], [nil] * 2, [nil] * 3], "(1 * ?bytes, 2 * ?(complex128, 10 * 2 * string), 3 * ?string)"],
 
-  [[[""],[[0.0i, [[nil] * 2]] * 10] * 2, [""] * 3], "(1 * bytes, 2 * (complex128, 10 * 2 * ?string), 3 * string)"],
-  [[[nil], [[0.0i, [[nil] * 2] * 10] * 2, [""] * 3]], "(1 * ?bytes, 2 * (complex128, 10 * 2 * ?string), 3 * string)"],
-  [[[nil], [[nil, [[nil] * 2] * 10] * 2, [""] * 3]], "(1 * ?bytes, 2 * (?complex128, 10 * 2 * ?string), 3 * string)"],
+  [[[""],[[0.0i, [[nil] * 2] * 10]] * 2, [""] * 3], "(1 * bytes, 2 * (complex128, 10 * 2 * ?string), 3 * string)"],
+  [[[nil], [[0.0i, [[nil] * 2] * 10]] * 2, [""] * 3], "(1 * ?bytes, 2 * (complex128, 10 * 2 * ?string), 3 * string)"],
+  [[[nil], [[nil , [[nil] * 2] * 10]] * 2, [""] * 3], "(1 * ?bytes, 2 * (?complex128, 10 * 2 * ?string), 3 * string)"],
   [[[""], [[nil, [[nil] * 2] * 10]] * 2, [nil] * 3], "(1 * bytes, 2 * (?complex128, 10 * 2 * ?string), 3 * ?string)"],
 
   [[0, [[[[nil] * 5] * 4] * 3] * 2], "(int64, 2 * 3 * Some(4 * 5 * ?float64))"],

@@ -650,6 +650,12 @@ rb_ndtypes_from_object(VALUE type)
   return copy;
 }
 
+VALUE
+rb_ndtypes_set_error(ndt_context_t *ctx)
+{
+  return seterr(ctx);
+}
+
 void Init_ruby_ndtypes(void)
 {
   NDT_STATIC_CONTEXT(ctx);
