@@ -15,7 +15,72 @@ VALUE cNDTypes;
 VALUE mNDTypes_GCGuard;
 static VALUE cNDTypes_RBuf;
 
+static VALUE rb_eValueError;
+
 /* ------------------------------------------ */
+/****************************************************************************/
+/*                               Error handling                             */
+/****************************************************************************/
+
+/* Raise an error stored in $!. Clears it before raising. */
+inline void
+raise_error(void)
+{
+  VALUE exeception = rb_errinfo();
+
+  rb_set_errinfo(Qnil);
+  rb_exc_raise(exeception);
+}
+
+inline void
+set_error_info(VALUE err, const char * msg)
+{
+  rb_set_errinfo(rb_exc_new2(err, msg));
+}
+
+static VALUE
+seterr(ndt_context_t *ctx)
+{
+  VALUE exc = rb_eRuntimeError;
+
+  switch(ctx->err) {
+  case NDT_Success: /* should never be set on error */
+    exc = rb_eRuntimeError;
+    break;
+  case NDT_ValueError:
+    exc = rb_eValueError;
+    break;
+  case NDT_TypeError:
+    exc = rb_eTypeError;
+    break;
+  case NDT_InvalidArgumentError:
+    exc = rb_eValueError;
+    break;
+  case NDT_NotImplementedError:
+    exc = rb_eNotImpError;
+    break;
+  case NDT_IndexError:
+    exc = rb_eIndexError;
+    break;
+  case NDT_LexError: case NDT_ParseError:
+    exc = rb_eValueError;
+    break;
+  case NDT_OSError:
+    exc = rb_eSysStackError;
+    break;
+  case NDT_RuntimeError:
+    exc = rb_eRuntimeError;
+    break;
+  case NDT_MemoryError:
+    exc = rb_eNoMemError;
+    break;
+  }
+
+  set_error_info(exc, ndt_context_msg(ctx));
+  ndt_context_del(ctx);
+  
+  return exc;
+}
 
 /******************************************************************************/
 /************************* Resource Buffer Object *****************************/
@@ -231,13 +296,15 @@ NDTypes_initialize(VALUE self, VALUE type)
   GET_NDT(self, ndt_p);
   RBUF(ndt_p) = rbuf_allocate();
   if (RBUF(ndt_p) == NULL) {
-    
+    rb_raise(rb_eNoMemError, "problem in allocating RBUF object.");
   }
+  
   rb_ndtypes_gc_guard_register(ndt_p, RBUF(ndt_p));
 
   NDT(ndt_p) = ndt_from_string_fill_meta(rbuf_ndt_meta(self), cp, &ctx);
   if (NDT(ndt_p) == NULL) {
-    
+    seterr(&ctx);
+    raise_error();
   }
 
   return self;
@@ -278,13 +345,94 @@ NDTypes_serialize(VALUE self)
 
   size = ndt_serialize(&bytes, NDT(ndt), &ctx);
   if (size < 0) {
-    /* TODO: raise error for < 0 */
+    seterr(&ctx);
+    raise_error();
   }
 
-  str = rb_str_new(bytes, size);
+  str = rb_usascii_str_new(bytes, size);
   ndt_free(bytes);
 
   return str;
+}
+
+/* Implement #ndim */
+static VALUE
+NDTypes_ndim(VALUE self)
+{
+  NdtObject *ndt_p;
+
+  GET_NDT(self, ndt_p);
+  
+  const ndt_t *t = NDT(ndt_p);
+
+  if (ndt_is_abstract(t)) {
+    rb_raise(rb_eTypeError, "abstract type has no ndim.");
+  }
+
+  return LL2NUM(t->ndim);
+}
+
+/* #datasize */
+static VALUE
+NDTypes_datasize(VALUE self)
+{
+  NdtObject *ndt_p;
+
+  GET_NDT(self, ndt_p);
+  
+  const ndt_t *t = NDT(ndt_p);
+
+  if (ndt_is_abstract(t)) {
+    rb_raise(rb_eTypeError, "abstract type has no datasize.");
+  }
+
+  return LL2NUM(t->datasize);  
+}
+
+/* #itemsize */
+static VALUE
+NDTypes_itemsize(VALUE self)
+{
+  NdtObject *ndt_p;
+  int64_t size;
+
+  GET_NDT(self, ndt_p);
+  
+  const ndt_t *t = NDT(ndt_p);
+
+  if (ndt_is_abstract(t)) {
+    rb_raise(rb_eTypeError, "abstract type has no datasize.");
+  }
+
+  switch (t->tag) {
+  case FixedDim:
+    size = t->Concrete.FixedDim.itemsize;
+    break;
+  case VarDim:
+    size = t->Concrete.VarDim.itemsize;
+    break;
+  default:
+    size = t->datasize;
+    break;
+  }
+
+  return LL2NUM(size);
+}
+
+static VALUE
+NDTypes_align(VALUE self)
+{
+  NdtObject *ndt_p;
+ 
+  GET_NDT(self, ndt_p);
+  
+  const ndt_t *t = NDT(ndt_p);
+
+  if (ndt_is_abstract(t)) {
+    rb_raise(rb_eTypeError, "abstract type has no datasize.");
+  }
+
+  return LL2NUM(t->align);
 }
 
 /****************************************************************************/
@@ -514,12 +662,19 @@ void Init_ruby_ndtypes(void)
   cNDTypes_RBuf = rb_define_class_under(cNDTypes, "RBuf", rb_cObject);
   mNDTypes_GCGuard = rb_define_module_under(cNDTypes, "GCGuard");
 
+  /* errors */
+  rb_eValueError = rb_define_class("ValueError", rb_eRuntimeError);
+
   /* Initializers */
   rb_define_alloc_func(cNDTypes, NDTypes_allocate);
   rb_define_method(cNDTypes, "initialize", NDTypes_initialize, 1);
 
   /* Instance methods */
   rb_define_method(cNDTypes, "serialize", NDTypes_serialize, 0);
+  rb_define_method(cNDTypes, "ndim", NDTypes_ndim, 0);
+  rb_define_method(cNDTypes, "itemsize", NDTypes_itemsize, 0);
+  rb_define_method(cNDTypes, "datasize", NDTypes_datasize, 0);
+  rb_define_method(cNDTypes, "align", NDTypes_align, 0);
   rb_define_method(cNDTypes, "to_s", NDTypes_to_s, 0);
 
   /* Boolean functions */

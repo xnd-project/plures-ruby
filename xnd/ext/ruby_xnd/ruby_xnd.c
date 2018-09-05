@@ -238,7 +238,7 @@ string_is_u8(VALUE str)
                rb_funcall(
                     rb_funcall(str, rb_intern("encoding"), 0, NULL),
                     rb_intern("=="), 1,
-                    rb_const_get(rb_cEncoding, "UTF_8")
+                    rb_const_get(rb_cEncoding, rb_intern("UTF_8"))
                           )
                );
 }
@@ -250,7 +250,7 @@ string_is_u16(VALUE str)
                rb_funcall(
                           rb_funcall(str, rb_intern("encoding"), 0, NULL),
                           rb_intern("=="), 1,
-                          rb_const_get(rb_cEncoding, "UTF_16")
+                          rb_const_get(rb_cEncoding, rb_intern("UTF_16"))
                           )
                );
 }
@@ -262,9 +262,34 @@ string_is_u32(VALUE str)
                rb_funcall(
                           rb_funcall(str, rb_intern("encoding"), 0, NULL),
                           rb_intern("=="), 1,
-                          rb_const_get(rb_cEncoding, "UTF_32")
+                          rb_const_get(rb_cEncoding, rb_intern("UTF_32"))
                           )
                );
+}
+
+/* Encode a string to enc. enc should be name of the constant in Encoding::*. */
+static VALUE
+string_encode(VALUE str, const char * enc)
+{
+  return rb_funcall(str, rb_intern("encode"), 1,
+                    rb_const_get(rb_cEncoding, rb_intern(enc)));
+}
+
+static rb_encoding *
+rb_utf16_encoding(void)
+{
+  //printf("REACHED UTF16.\n");
+  //return rb_enc_find("UTF-16");
+  //return rb_to_encoding(rb_str_new2("UTF-16"));
+  return rb_enc_get(rb_const_get(rb_cEncoding, rb_intern("UTF_16")));
+}
+
+static rb_encoding *
+rb_utf32_encoding(void)
+{
+  return rb_enc_get(rb_const_get(rb_cEncoding, rb_intern("UTF_32")));
+  /* return rb_enc_find("UTF-32"); */
+  //  return rb_to_encoding(rb_str_new2("UTF-32"));
 }
 
 static int64_t
@@ -626,12 +651,12 @@ mblock_init(xnd_t * const x, VALUE data)
                  "maxmimum string size in bytes is %" PRIi64, codepoints);
       }
 
-      _strncpy(x->ptr, StringValueCStr(data), (size_t)len, (size_t)t->datasize);
+      _strncpy(x->ptr, StringValuePtr(data), (size_t)len, (size_t)t->datasize);
       return 0;
     }
       
     case Utf8: {
-      if (!string_is_utf8(data)) {
+      if (!string_is_u8(data)) {
         rb_raise(rb_eValueError, "string must be utf-8");
       }
 
@@ -641,16 +666,46 @@ mblock_init(xnd_t * const x, VALUE data)
                  "maximum string size (in UTF-8 code points) is %" PRIi64, codepoints);
       }
 
-      _strncpy(x->ptr, StringValueCStr(data), (size_t)len, (size_t)t->datasize);
+      _strncpy(x->ptr, StringValuePtr(data), (size_t)len, (size_t)t->datasize);
       return 0;
     }
 
     case Utf16: {
-      /* FIXME: create UTF-16 string from C API. */
+      VALUE b = string_encode(data, "UTF_16");
+
+      len = RSTRING_LEN(b);
+
+      printf("len-2: %d. datasize: %d.\n", len-2, t->datasize);
+
+      if (len-2 > t->datasize) {
+        rb_raise(rb_eValueError,
+                 "maximum string size (in UTF-16 code points) is %" PRIi64, codepoints);
+      }
+
+#ifdef XND_DEBUG
+      /* skip byte order mark. */
+      assert(len >= 2);
+#endif
+      _strncpy(x->ptr, StringValuePtr(data) + 2, (size_t)(len-2), (size_t)t->datasize);
+      return 0;
     }
 
     case Utf32: {
-      /* FIXME: create UTF-32 string from C API. */
+      VALUE b = string_encode(data, "UTF_32");
+
+      len = RSTRING_LEN(b);
+      printf("len-4: %d. datasize: %d.\n", len-4, t->datasize);
+      if (len-4 > t->datasize) {
+        rb_raise(rb_eValueError,
+                 "maximum string size (in UTF-32 code points) is %" PRIi64, codepoints);
+      }
+
+#ifdef XND_DEBUG
+      /* skip byte order mark. */
+      assert(len >= 4);
+#endif
+      _strncpy(x->ptr, StringValuePtr(data)+4, (size_t)(len-4), (size_t)t->datasize);
+      return 0;
     }
 
     case Ucs2: {
@@ -1156,20 +1211,37 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
     
     switch (t->FixedString.encoding) {
     case Ascii: {
-
+      codepoints = u8_skip_trailing_zero((uint8_t *)x->ptr, codepoints);
+      return rb_usascii_str_new(x->ptr, codepoints);
     }
       
     case Utf8: {
+      codepoints = u8_skip_trailing_zero((uint8_t *)x->ptr, codepoints);
+      return rb_utf8_str_new(x->ptr, codepoints);
     }
 
     case Utf16: {
+      rb_encoding *utf16 = rb_utf16_encoding();
+      if (utf16 == NULL) {
+        rb_raise(rb_eValueError, "could not get UTF-16 encoding object.");
+      }
+      
+      codepoints = u16_skip_trailing_zero((uint16_t *)x->ptr, codepoints);
+      return rb_enc_str_new(x->ptr, codepoints, utf16);
     }
 
     case Utf32: {
-
+      rb_encoding *utf32 = rb_utf32_encoding();
+      if (utf32 == NULL) {
+        rb_raise(rb_eValueError, "could not get UTF-32 encoding object.");
+      }
+      
+      codepoints = u32_skip_trailing_zero((uint16_t *)x->ptr, codepoints);
+      return rb_enc_str_new(x->ptr, codepoints, utf32);
     }
 
     case Ucs2: {
+      rb_raise(rb_eNotImpError, "UCS2 encoding not implemented.");
     }
 
     default: {

@@ -98,7 +98,7 @@ describe XND do
         v = ["\u1111\u2222\u3333", "\u1112\u2223\u3334"]
         x = XND.new v, type: t
 
-        expect(x.value).to eq(v)
+        expect(x.value).to eq(v.map { |a| a.encode(Encoding::UTF_16)})
       end
 
       it "creates FixedString utf32 array" do
@@ -106,7 +106,7 @@ describe XND do
         v = ["\U00011111\U00022222\U00033333", "\U00011112\U00022223\U00033334"]
         x = XND.new v, type: t
         
-        expect(x.value).to eq(v)
+        expect(x.value).to eq(v.map { |a| a.encode(Encoding::UTF_32)})
       end
     end
   end

@@ -41,6 +41,47 @@ describe NDTypes do
 
       expect_serialize o
     end
+
+    context "FixedString" do
+      it "checks predicates" do
+        t = NDT.new "fixed_string(380, 'utf16')"
+
+        expect_serialize t
+
+        expect(t.abstract?).to eq(false)
+        expect(t.complex?).to eq(false)
+        expect(t.concrete?).to eq(true)
+        expect(t.float?).to eq(false)
+        expect(t.optional?).to eq(false)
+        expect(t.scalar?).to eq(true)
+        expect(t.signed?).to eq(false)
+        expect(t.unsigned?).to eq(false)
+
+        expect(t.c_contiguous?).to eq(true)
+        expect(t.f_contiguous?).to eq(true)
+      end
+
+      it "checks fixed string common fields" do
+        [
+          ['ascii', 1],
+          ['utf8', 1],
+          ['utf16', 2],
+          ['utf32', 4]
+        ].each do |encoding, codepoint_size|
+          t = NDT.new "fixed_string(20, '#{encoding}')"
+          
+          expect_serialize t
+          expect(t.ndim).to eq(0)
+
+          if RUBY_PLATFORM != "i686-linux"
+            expect(t.itemsize).to eq(20 * codepoint_size)
+            expect(t.align).to eq(codepoint_size)
+          end
+
+          # raises tests.
+        end
+      end
+    end
   end
 
   context "#serialize" do
