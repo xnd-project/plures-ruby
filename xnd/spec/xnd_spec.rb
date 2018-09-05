@@ -92,27 +92,28 @@ describe XND do
       
     end
 
-    context "FixedString", v: true do
-      it "creates FixedString utf16 array" do
+    skip "FixedString" do
+      it "creates FixedString utf16" do
         t = "2 * fixed_string(3, 'utf16')"
         v = ["\u1111\u2222\u3333", "\u1112\u2223\u3334"]
         x = XND.new v, type: t
-
-        expect(x.value).to eq(v.map { |a| a.encode(Encoding::UTF_16)})
+        
+        expect(x.value).to eq(v)
       end
 
-      it "creates FixedString utf32 array" do
+      it "creates FixedString utf32 - figure a way to specify 32bit codepoints." do
         t = "2 * fixed_string(3, 'utf32')"
-        v = ["\U00011111\U00022222\U00033333", "\U00011112\U00022223\U00033334"]
+        v = ["\x00\x01\x11\x11\x00\x02\x22\x22\x00\x03\x33\x33".u32,
+             "\x00\x01\x11\x12\x00\x02\x22\x23\x00\x03\x33\x34".u32]
         x = XND.new v, type: t
         
-        expect(x.value).to eq(v.map { |a| a.encode(Encoding::UTF_32)})
+        expect(x.value).to eq(v)
       end
     end
   end
 
   context ".empty" do
-    context "FixedDim" do
+    context "FixedDim", v: true do
       DTYPE_EMPTY_TEST_CASES.each do |v, s|
         [
           [[v] * 0, "0 * #{s}" ],
