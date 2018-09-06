@@ -455,16 +455,27 @@ mblock_init(xnd_t * const x, VALUE data)
   }
 
   case Bool: {
-    int temp;
     bool b;
 
     if (data == Qnil) {
-      rb_raise(rb_eTypeError, "assigning nil to memory block with non-optional type.");
+      rb_raise(rb_eTypeError,
+               "assigning nil to memory block with non-optional type.");
     }
 
-    temp = RTEST(data);
-    b = (bool)temp;
-
+    if (RTEST(data)) {
+      if (FIXNUM_P(data) || RB_FLOAT_TYPE_P(data)) {
+        if (NUM2INT(data) == 0) {
+          b = 0;
+        }
+      }
+      else {
+        b = 1;
+      }
+    }
+    else {
+      b = 0;
+    }
+    
     PACK_SINGLE(x->ptr, b, bool, t->flags);
     return 0;
   }
@@ -977,10 +988,6 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
       }
 
       v = _XND_value(&next, maxshape);
-      if (v == NULL) {
-        rb_raise(rb_eValueError, "could not get tuple value in _XND_value.");
-      }
-      
       rb_ary_store(tuple, i, v);
     }
 
@@ -1383,7 +1390,8 @@ XND_array_aref(int argc, VALUE *argv, VALUE self)
   GET_XND(self, xnd_p);
   x = xnd_subscript(&xnd_p->xnd, indices, len, &ctx);
   if (x.ptr == NULL) {
-    // set error as per ctx.
+    seterr(&ctx);
+    raise_error();
   }
 
   return RubyXND_view_move_type(xnd_p, &x);
@@ -1532,6 +1540,13 @@ XND_size(VALUE self)
   return ULL2NUM(_XND_size(XND(self_p)));
 }
 
+/* Implement XND#each */
+static VALUE
+XND_each(VALUE self)
+{
+  
+}
+
 /*************************** Singleton methods ********************************/
 
 static VALUE
@@ -1601,6 +1616,9 @@ void Init_ruby_xnd(void)
   rb_define_method(cXND, "<=>", XND_spaceship, 1);
   rb_define_method(cXND, "strict_equal", XND_strict_equal, 1);
   rb_define_method(cXND, "size", XND_size, 0);
+
+  /* iterators */
+  rb_define_method(cXND, "each", XND_each, 0);
 
   /* singleton methods */
   rb_define_singleton_method(cXND, "empty", XND_s_empty, 1);

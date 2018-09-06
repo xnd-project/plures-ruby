@@ -110,6 +110,40 @@ describe XND do
         expect(x.value).to eq(v)
       end
     end
+
+    context "Bool" do
+      it "from bool" do
+        x = XND.new true, type: "bool"
+        expect(x.value).to eq(true)
+
+        x = XND.new false, type: "bool"
+        expect(x.value).to eq(false)
+      end
+
+      it "from int" do
+        x = XND.new 1, type: "bool"
+        expect(x.value).to eq(true)
+
+        x = XND.new 0, type: "bool"
+        expect(x.value).to eq(false)
+      end
+
+      it "from object" do
+        x = XND.new [1,2,3], type: "bool"
+        expect(x.value).to eq(true)
+
+        x = XND.new nil, type: "?bool"
+        expect(x.value).to eq(nil)
+
+        expect {
+          XND.new nil, type: "bool"
+        }.to raise_error(TypeError)
+      end
+
+      skip "tests broken input - how can this be done in Ruby?" do
+        
+      end
+    end
   end
 
   context ".empty" do
@@ -680,6 +714,29 @@ describe XND do
       it "returns the size of the XND array" do
         x = XND.new [1,2,3,4,5]
         expect(x.size).to eq(5)
+      end
+    end
+  
+    context "Bool" do
+      it "raises error" do
+        x = XND.new true, type: "bool"
+        expect {
+          x.size
+        }.to raise_error(TypeError)
+      end
+    end
+  end
+
+  context "#each", vag: true do
+    context "FixedDim" do
+      it "iterates over all elements" do
+        x = XND.new [1,2,3,4,5], type: "5 * int64"
+        sum = 0
+        x.each do |a|
+          sum += x
+        end
+
+        expect(sum).to eq(15)
       end
     end
   end
