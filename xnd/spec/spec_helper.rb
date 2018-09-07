@@ -28,7 +28,7 @@ def expect_with_exception func, x, y
     yerr = e.class
   end
 
-  if err.nil? && yerr.nil?
+  if xerr.nil? && yerr.nil?
     expect(xres).to eq(yres)
   else
     expect(xerr).to eq(yerr)
@@ -52,7 +52,7 @@ EMPTY_TEST_CASES = [
   [[], "0 * %s"],
   [[0], "1 * %s"],
   [[0, 0], "var(offsets=[0, 2]) * %s"],
-  [[{"a": 0, "b": 0}] * 3, "3 * {a: int64, b: %s}"]
+  [[{"a" => 0, "b" => 0}] * 3, "3 * {a: int64, b: %s}"]
 ]
 
 # ======================================================================

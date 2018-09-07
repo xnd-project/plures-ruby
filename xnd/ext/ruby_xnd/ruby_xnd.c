@@ -1492,7 +1492,8 @@ _XND_size(const xnd_t *x)
 
     shape = ndt_var_indices(&start, &step, t, x->index, &ctx);
     if (shape < 0) {
-      /* error. */
+      seterr(&ctx);
+      raise_error();
     }
 
     return safe_downcast(shape);
@@ -1509,7 +1510,8 @@ _XND_size(const xnd_t *x)
   case Ref: {
     const xnd_t next = xnd_ref_next(x, &ctx);
     if (next.ptr == NULL) {
-      /* error */
+      seterr(&ctx);
+      raise_error();
     }
 
     return _XND_size(&next);
@@ -1518,14 +1520,25 @@ _XND_size(const xnd_t *x)
   case Constr: {
     const xnd_t next = xnd_constr_next(x, &ctx);
     if (next.ptr == NULL) {
-      /* error */
+      seterr(&ctx);
+      raise_error();
     }
 
     return _XND_size(&next);
   }
 
+  case Nominal: {
+    const xnd_t next = xnd_nominal_next(x, &ctx);
+    if (next.ptr == NULL) {
+      seterr(&ctx);
+      raise_error();
+    }
+
+    return _XND_size(&next); 
+  }
+
   default: {
-    rb_raise(rb_eTypeError, "type has no size.");
+    rb_raise(rb_eNoMethodError, "This type has no size method.");
   }
   }  
 }
