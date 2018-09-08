@@ -19,19 +19,21 @@ describe NDTypes do
   end
 
   context ".instantiate" do
-    it "instantiates NDTypes object from typedef and type" do
-      NDT.typedef "node", "int32"
-      NDT.typedef "cost", "int32"
-      NDT.typedef "graph", "var * var * (node, cost)"
+    context "Typedef" do
+      it "instantiates NDTypes object from typedef and type" do
+        NDT.typedef "node", "int32"
+        NDT.typedef "cost", "int32"
+        NDT.typedef "graph", "var * var * (node, cost)"
 
-      t = NDT.new "var(offsets=[0,2]) * var(offsets=[0,3,10]) * (node, cost)"
-      u = NDT.instantiate "graph", t
-      expect(u.concrete?).to eq(true)
+        t = NDT.new "var(offsets=[0,2]) * var(offsets=[0,3,10]) * (node, cost)"
+        u = NDT.instantiate "graph", t
+        expect(u.concrete?).to eq(true)
 
-      t = NDT.new "var(offsets=[0,2]) * var(offsets=[0,2,3]) * var(offsets=[0,1,2,3]) * (node, cost)"
-      expect {
-        NDT.instantiate("graph", t)
-      }.to raise_error(ValueError)
+        t = NDT.new "var(offsets=[0,2]) * var(offsets=[0,2,3]) * var(offsets=[0,1,2,3]) * (node, cost)"
+        expect {
+          NDT.instantiate("graph", t)
+        }.to raise_error(ValueError)
+      end      
     end
   end
   
@@ -40,6 +42,54 @@ describe NDTypes do
       o = NDTypes.new("3 * uint64")
 
       expect_serialize o
+    end
+
+    context "tests roundtrip" do
+      [
+        "2 * 3 * float64",
+        "2 * 3 * {a : uint8, b : complex64}",
+      ].each do |s|
+        it "type: #{s}" do
+          t = NDT.new s
+
+          expect(t.to_s).to eq(s)
+        end
+      end
+    end
+
+    context "from NDT" do
+      [
+        "2 * 3 * {a : 10 * bytes, b : 20 * string}",
+        "var(offsets=[0,2]) * var(offsets=[0,3,10]) * complex128"
+      ].each do |s|
+        it "type: #{s}" do
+          t = NDT.new s
+          u = NDT.new t
+
+          expect(u).to eq(u)          
+        end
+      end
+
+      it "test with offset" do
+        t = NDT.new "{x: complex128, y: float64}", [[0, 2], [0, 3, 5]]
+        u = NDT.new t
+
+        expect(u).to eq(t)
+      end
+    end
+
+    context "raises errors" do
+      [
+        "", "xyz", "var() * int64"
+      ].each do |t|
+        it "type #{t} raises ValueError" do
+          expect { NDT.new(t) }.to raise_error(ValueError)
+        end
+      end
+
+      it "raises TypeError" do
+        expect { NDT.new(nil) }.to raise_error(TypeError)
+      end
     end
 
     context "FixedString" do
@@ -84,6 +134,112 @@ describe NDTypes do
     end
   end
 
+  context "#match" do
+    it "needs to contiguity requirements" do
+      p = NDT.new("... * 2 * 3 * float32")
+      c = NDT.new("2 * 3 * float32")
+
+      expect(p.match(c)).to eq(true)
+    end
+
+    context "C-contiguity required for inner dimensions" do
+      before do
+        @p = NDT.new "... * C[2 * 3 * float32]"
+      end
+
+      it "with C input" do
+        c = NDT.new "2 * 3 * float32"
+        expect(@p.match(c)).to eq(true)
+      end
+
+      it "with inner dimensionss C-contiguous" do
+        c = NDT.new "4 * 2 * 3 * float32"
+        expect(@p.match(c)).to eq(true)
+      end
+
+      it "with inner dimensions C-contiguous" do
+        c = NDT.new "fixed(shape=4, step=-6) * 2 * 3 * float32"
+        expect(@p.match(c)).to eq(true)
+      end
+
+      it "with F input" do
+        c = NDT.new "!2 * 3 * float32"
+        expect(@p.match(c)).to eq(false)
+      end
+    end
+
+    context "F-contiguity required for inner dimensions" do
+      before do
+        @p = NDT.new "... * F[2 * 3 * float32]"        
+      end
+
+      it "with F input" do
+        c = NDT.new "fixed(shape=10, step=6) * fixed(shape=2, step=1) * fixed(shape=3, step=2) * float32"
+        expect(@p.match(c)).to eq(true)
+      end
+
+      it "with C input" do
+        c = NDT.new "2 * 3 * float32"
+        expect(@p.match(c))
+      end
+    end
+
+    context "C-contiguity required for all dimensions after broadcast" do
+      before do
+        @p = NDT.new "C[... * 2 * 3 * float32]"
+      end
+
+      it "with C input" do
+        c = NDT.new "2 * 3 * float32"
+        expect(@p.match(c)).to eq(true)
+      end
+
+      it "with all dimensions C-contiguous" do
+        c = NDT.new "4 * 2 * 3 * float32"
+        expect(@p.match(c)).to eq(true)
+      end
+
+      it "with inner dimensions C-contiguous" do
+        c = NDT.new "fixed(shape=4, step=-6) * 2 * 3 * float32"
+        expect(@p.match(c)).to eq(false)
+      end
+
+      it "with F input" do
+        c = NDT.new "!2 * 3 * float32"
+        expect(@p.match(c)).to eq(false)
+      end
+    end
+
+    context "F-contiguity required for all dimensions after broadcast." do
+      before do
+        @p = NDT.new "F[... * 2 * 3 * float32]"
+      end
+
+      it "with C input" do
+        c = NDT.new "2 * 3 * float32"
+        expect(@p.match(c)).to eq(false)
+
+        c = NDT.new "4 * 2 * 3 * float32"
+        expect(@p.match(c)).to eq(false)
+      end
+
+      it "with F input" do
+        c = NDT.new "!2 * 3 * float32"
+        expect(@p.match(c)).to eq(true)
+      end
+
+      it "with all dimensions F-contiguous" do
+        c = NDT.new "!4 * 2 * 3 * float32"
+        expect(@p.match(c)).to eq(true)
+      end
+
+      it "with inner dimensions C-contiguous" do
+        c = NDT.new "fixed(shape=10, step=6) * fixed(shape=2, step=1) * fixed(shape=3, step=2) * float32"
+        expect(@p.match(c)).to eq(false)
+      end
+    end
+  end
+
   context "#serialize" do
     it "serializes the given shape" do
       s = NDTypes.new "3 * char"
@@ -109,14 +265,18 @@ describe NDTypes do
     end
   end
 
-  context "#abstract?" do
-    it "checks for abstract type" do
-      
-    end
-  end
+  context "#dup" do
+    DTYPE_TEST_CASES.each do |dtype, mem|
+      it "dtype: #{dtype}" do
+        t = NDT.new dtype
+        u = t.dup
 
-  context "#concrete?" do
-    it "checks for concrete type" do
+        expect(t).to eq(u)
+        expect(t.ast).to eq(u.ast)        
+      end
+    end
+
+    skip "tests GC -- figure how to do this." do
       
     end
   end

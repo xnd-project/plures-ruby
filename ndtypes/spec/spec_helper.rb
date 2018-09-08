@@ -7,3 +7,5 @@ def expect_serialize t
 
   expect(u).to eq(t)
 end
+
+DTYPE_TEST_CASES = []

@@ -419,6 +419,7 @@ NDTypes_itemsize(VALUE self)
   return LL2NUM(size);
 }
 
+/* Implement #align */
 static VALUE
 NDTypes_align(VALUE self)
 {
@@ -433,6 +434,49 @@ NDTypes_align(VALUE self)
   }
 
   return LL2NUM(t->align);
+}
+
+static int
+NDTypes_compare(VALUE self, VALUE other)
+{
+  NdtObject *self_p, *other_p;
+  
+  if (!NDT_CHECK_TYPE(other)) {
+    rb_raise(rb_eArgError, "other argument must be of type NDT.");
+  }
+
+  GET_NDT(self, self_p);
+  GET_NDT(other, other_p);
+
+  return ndt_equal(NDT(self_p), NDT(other_p));  
+}
+
+/* Implement #== operator */
+static VALUE
+NDTypes_eqeq(VALUE self, VALUE other)
+{
+  int r = NDTypes_compare(self, other);
+  
+  if (r == 0) {                  /* not equal */
+    return Qfalse;
+  }
+  else {                        /* equal */
+    return Qtrue;
+  }
+}
+
+/* Implemented #!= operator */
+static VALUE
+NDTypes_neq(VALUE self, VALUE other)
+{
+  int r = NDTypes_compare(self, other);
+  
+  if (r == 0) {                  /* not equal */
+    return Qtrue;
+  }
+  else {                        /* equal */
+    return Qfalse;
+  }
 }
 
 /****************************************************************************/
@@ -513,12 +557,44 @@ NDTypes_s_typedef(VALUE klass, VALUE new_type, VALUE old_type)
 
 /* Instatiate ndtypes object using typedef'd type and another NDTypes object. */
 static VALUE
-NDTypes_s_instantiate(VALUE klass, VALUE typdef, VALUE ndt)
+NDTypes_s_instantiate(VALUE klass, VALUE name, VALUE type)
 {
   const char *cname;
   char *cp;
   ndt_t *t, *tp;
-  NDT_STATIC_CONTEXT(ctx);  
+  NdtObject *type_p;
+  NDT_STATIC_CONTEXT(ctx);
+
+  Check_Type(name, T_STRING);
+
+  cname = StringValuePtr(name);
+
+  if (!NDT_CHECK_TYPE(type)) {
+    rb_raise(rb_eTypeError, "type argument must be ndt.");
+  }
+
+  cp = ndt_strdup(cname, &ctx);
+  if (cp == NULL) {
+    seterr(&ctx);
+    raise_error();
+  }
+
+  GET_NDT(type, type_p);
+
+  tp = ndt_copy(NDT(type_p), &ctx);
+  if (tp == NULL) {
+    ndt_free(cp);
+    seterr(&ctx);
+    raise_error();
+  }
+
+  t = ndt_nominal(cp, tp, &ctx);
+  if (t == NULL) {
+    seterr(&ctx);
+    raise_error();    
+  }
+
+  return rb_ndtypes_move_subtree(type, t);
 }
 
 /****************************************************************************/
@@ -694,6 +770,8 @@ void Init_ruby_ndtypes(void)
   rb_define_method(cNDTypes, "complex?", NDTypes_ndt_is_complex, 0);
   rb_define_method(cNDTypes, "c_contiguous?", NDTypes_ndt_is_c_contiguous, 0);
   rb_define_method(cNDTypes, "f_contiguous?", NDTypes_ndt_is_f_contiguous, 0);
+  rb_define_method(cNDTypes, "==", NDTypes_eqeq, 1);
+  rb_define_method(cNDTypes, "!=", NDTypes_neq, 1);
 
   /* Class methods */
   rb_define_singleton_method(cNDTypes, "deserialize", NDTypes_s_deserialize, 1);
