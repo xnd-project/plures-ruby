@@ -2,18 +2,128 @@ require 'spec_helper'
 
 describe XND do
   context ".new" do
-    skip "Type Inference" do
-      # tuple
+    context "Type Inference", focus: true do
+      context "Tuple" do
+        d = {'a' => [2.0, "bytes".b], 'b' => ["str", Float::INFINITY] }
+        typeof_d = "{a: (float64, bytes), b: (string, float64)}"
 
-      # record
+        [
+          [[], "()"],
+          [[[]], "(())"],
+          [[[], []], "((), ())"],
+          [[[[]], []], "((()), ())"],
+          [[[[]], [[], []]], "((()), ((), ()))"],
+          [[1, 2, 3], "(int64, int64, int64)"],
+          [[1.0, 2, "str"], "(float64, int64, string)"],
+          [[1.0, 2, ["str", "bytes".b, d]],
+           "(float64, int64, (string, bytes, #{typeof_d}))"]
+        ].each do |v, t|
+          it "type: #{t}" do
+            x = XND.new v
 
-      # float64
+            expect(x.type).to eq(NDT.new(t))
+            expect(x.value).to eq(v)            
+          end
+        end
+      end
 
-      # complex 128
+      context "Record" do
+        d = {'a' => [2.0, "bytes".b], 'b': ["str", Float::INFINITY ]}
+        typeof_d = "{a: (float64, bytes), b: (string, float64)}"
 
-      # int64
+        [
+          [{}, "{}"],
+          [{'x' => {}}, "{x: {}}"],
+          [{'x' => {}, 'y' => {}}, "{x: {}, y: {}}"],
+          [{'x' => {'y' => {}}, 'z' => {}}, "{x: {y: {}}, z: {}}"],
+          [{'x' => {'y' => {}}, 'z' => {'a' => {}, 'b' => {}}}, "{x: {y: {}}, z: {a: {}, b: {}}}"],
+          [d, typeof_d]
+        ].each do |v, t|
+          it "type: #{t}" do
+            x = XND.new v
 
-      context "String", focus: true do
+            expect(x.type).to eq(NDT.new(t))
+            expect(x.value).to eq(v)            
+          end
+        end
+      end
+
+      context "Float64" do
+        d = {'a' => 2.221e100, 'b' => Float::INFINITY}
+        typeof_d = "{a: float64, b: float64}"
+
+        [
+          # 'float64' is the default dtype if there is no data at all.
+          [[], "0 * float64"],
+          [[[]], "1 * 0 * float64"],
+          [[[], []], "2 * 0 * float64"],
+          [[[[]], [[]]], "2 * 1 * 0 * float64"],
+          [[[[]], [[], []]],
+           "var(offsets=[0, 2]) * var(offsets=[0, 1, 3]) * var(offsets=[0, 0, 0, 0]) * float64"],
+
+          [[0.0], "1 * float64"],
+          [[0.0, 1.2], "2 * float64"],
+          [[[0.0], [1.2]], "2 * 1 * float64"],
+
+          [d, typeof_d],
+          [[d] * 2, "2 * %s" % typeof_d],
+          [[[d] * 2] * 10, "10 * 2 * #{typeof_d}"]
+        ].each do |v, t|
+          it "type: #{t}" do
+            x = XND.new v
+
+            expect(x.type).to eq(NDT.new(t))
+            expect(x.value).to eq(v)            
+          end
+        end
+      end
+
+      context "Complex128" do
+        d = {'a' => 3.123+10i, 'b' => Complex(Float::INFINITY, Float::INFINITY)}
+        typeof_d = "{a: complex128, b: complex128}"
+
+        [
+          [[1+3e300i], "1 * complex128"],
+          [[-2.2-5i, 1.2-10i], "2 * complex128"],
+          [[-2.2-5i, 1.2-10i, nil], "3 * ?complex128"],
+          [[[-1+3i], [-3+5i]], "2 * 1 * complex128"],
+
+          [d, typeof_d],
+          [[d] * 2, "2 * #{typeof_d}"],
+          [[[d] * 2] * 10, "10 * 2 * #{typeof_d}"]
+        ].each do |v, t|
+          it "type: #{t}" do
+            x = XND.new v
+
+            expect(x.type).to eq(NDT.new(t))
+            expect(x.value).to eq(v)            
+          end
+        end
+      end
+
+      context "Int64" do
+        t = [1, -2, -3]
+        typeof_t = "(int64, int64, int64)"
+
+        [
+          [[0], "1 * int64"],
+          [[0, 1], "2 * int64"],
+          [[[0], [1]], "2 * 1 * int64"],
+
+          [t, typeof_t],
+          [[t] * 2, "2 * #{typeof_t}"],
+          [[[t] * 2] * 10, "10 * 2 * #{typeof_t}"]
+        ].each do |v, t|
+          it "type: #{t}" do  
+            x = XND.new v
+
+            expect(x.type).to eq(NDT.new(t))
+            expect(x.value).to eq(v)          
+          end
+        end
+      end
+
+      context "String" do
         t = ["supererogatory", "exiguous"]
         typeof_t = "(string, string)"
 
@@ -57,7 +167,36 @@ describe XND do
         end
       end
 
-      # optional
+      context "Optional" do
+        [
+          [nil, "?float64"],
+          [[nil], "1 * ?float64"],
+          [[nil, nil], "2 * ?float64"],
+          [[nil, 10], "2 * ?int64"],
+          [[nil, 'abc'.b], "2 * ?bytes"],
+          [[nil, 'abc'], "2 * ?string"]
+        ].each do |v, t|
+          it "type: #{t}" do
+            x = XND.new v
+
+            expect(x.type).to eq(NDT.new(t))
+            expect(x.value).to eq(v)
+          end
+        end
+
+        [
+          [nil, []],
+          [[], nil],
+          [nil, [10]],
+          [[nil, [0, 1]], [[2, 3]]]
+        ].each do |v|
+          it "not implemented for value: #{v}" do 
+            expect {
+              XND.new v
+            }.to raise_error(NotImplementedError)           
+          end
+        end
+      end
     end
     
     context "FixedDim" do
