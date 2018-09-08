@@ -661,7 +661,19 @@ mblock_init(xnd_t * const x, VALUE data)
     int64_t size = t->FixedBytes.size;
     int64_t len;
 
-    /* FIXME: check for bytes object. */
+    if (!string_is_ascii(data)) {
+      rb_raise(rb_eTypeError, "String must be ASCII encoded for FixedBytes.");
+    }
+
+    len = RSTRING_LEN(data);
+
+    if (len > size) {
+      rb_raise(rb_eValueError, "maximum number of bytes in string is %", PRIi64, size);
+    }
+
+    _strncpy(x->ptr, StringValuePtr(data), (size_t)len, (size_t)size);
+    
+    return 0;
   }
 
   case String: {
@@ -669,7 +681,7 @@ mblock_init(xnd_t * const x, VALUE data)
     const char *cp;
     char *s;
 
-    cp = StringValueCStr(data);
+    cp = StringValuePtr(data);
     size = RSTRING_LEN(data);
     s = ndt_strdup(cp, &ctx);
     if (s == NULL) {
@@ -710,6 +722,73 @@ mblock_init(xnd_t * const x, VALUE data)
   }
 
   case Categorical: {
+    int64_t k;
+
+    switch (TYPE(data)) {
+    case T_TRUE: case T_FALSE: {
+      int temp = RTEST(data);
+
+      for (k = 0; k < t->Categorical.ntypes; k++) {
+        if (t->Categorical.types[k].tag == ValBool &&
+            temp == t->Categorical.types[k].ValBool) {
+          PACK_SINGLE(x->ptr, k, int64_t, t->flags);
+          return 0;
+        }
+      }
+      goto not_found;
+    }
+
+    case T_FIXNUM: {
+      int64_t temp = get_int(data, INT64_MIN, INT64_MAX);
+
+      for (k = 0; k < t->Categorical.ntypes; k++) {
+        if (t->Categorical.types[k].tag == ValInt64 &&
+            temp == t->Categorical.types[k].ValInt64) {
+          PACK_SINGLE(x->ptr, k, int64_t, t->flags);
+          return 0;
+        }
+      }
+
+      goto not_found;
+    }
+
+    case T_FLOAT: {
+      double temp = NUM2DBL(data);
+
+      for (k = 0; k < t->Categorical.ntypes; k++) {
+        if (t->Categorical.types[k].tag == ValFloat64 &&
+            temp == t->Categorical.types[k].ValFloat64) {
+          PACK_SINGLE(x->ptr, k, int64_t, t->flags);
+          return 0;
+        }
+      }
+
+      goto not_found;
+    }
+    case T_STRING: {
+      const char *temp = RSTRING_PTR(data);
+
+      for (k = 0; k < t->Categorical.ntypes; k++) {
+        if (t->Categorical.types[k].tag == ValString &&
+            strcmp(temp, t->Categorical.types[k].ValString) == 0) {
+          PACK_SINGLE(x->ptr, k, int64_t, t->flags);
+          return 0;
+        }
+      }
+
+      goto not_found;
+    }
+
+    not_found:
+      for (k = 0; k < t->Categorical.ntypes; k++) {
+        if (t->Categorical.types[k].tag == ValNA) {
+          PACK_SINGLE(x->ptr, k, int64_t, t->flags);
+          return 0;
+        }
+      }
+
+      rb_raise(rb_eValueError, "category not found.");
+    }
   }
 
   case Char: {
@@ -1452,8 +1531,8 @@ XND_strict_equal(VALUE self, VALUE other)
 
   r = xnd_strict_equal(XND(left_p), XND(right_p), &ctx);
   if (r < 0) {
-    rb_raise(rb_eRuntimeError, "r is less than 0.");
-    /* TODO: change this to ctx-specific error. */
+    seterr(&ctx);
+    raise_error();
   }
 
   if (r) {
@@ -1589,7 +1668,6 @@ rb_xnd_hash_size(VALUE hash)
 
   return NUM2ULL(rb_funcall(hash, rb_intern("size"), 0, NULL));
 }
-
 
 /* FIXME: Find a better way to access real/imag parts of complex number.
    This is too slow.

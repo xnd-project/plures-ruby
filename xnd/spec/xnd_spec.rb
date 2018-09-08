@@ -84,7 +84,7 @@ describe XND do
         t = NDT.new "2 * 3 * int64"
         expect {
           XND.new([[1,2,"peep!"], [2,3,4]], type: t)
-        }.to raise_error(ValueError)      
+        }.to raise_error(TypeError)      
       end      
     end
 
@@ -345,16 +345,12 @@ describe XND do
           [[v] * 3, "ref(ref(3 * #{s}))"],
           [[v] * 3, "ref(ref(ref(3 * #{s})))"]
         ].each do |vv, ss|
-          it "type: #{ss}" do
-            if ss == "ref(bool)"
-              t = NDT.new ss
-              x = XND.empty ss
-              puts "vv:: #{vv.size}."
-              
-              expect(x.type).to eq(t)
-              expect(x.value).to eq(vv)
-              expect_with_exception :size, x, vv              
-            end
+          it "type: #{ss}", vag: true do
+            t = NDT.new ss
+            x = XND.empty ss
+            
+            expect(x.type).to eq(t)
+            expect(x.value).to eq(vv)
           end
         end
       end
@@ -376,7 +372,11 @@ describe XND do
             
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
-            expect_with_exception :size, x, vv
+            if vv == 0
+              expect {
+                x.size
+              }.to raise_error(NoMethodError)
+            end
           end
         end
       end
@@ -398,7 +398,11 @@ describe XND do
             
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
-            expect_with_exception :size, x, vv
+            if vv == 0
+              expect {
+                x.size
+              }.to raise_error(NoMethodError)
+            end
           end          
         end
 
@@ -420,7 +424,7 @@ describe XND do
         [[[1.2] * 2] * 10, "10 * 2 * categorical(1.2, 10.0, NA)"],
         [[[100] * 2] * 10, "10 * 2 * categorical(100, 'mixed')"],
         [[[r] * 2] * 10, "10 * 2 * #{rt}"],
-        [[[r], [r] * 5, [r] * 3], "var(offsets=[0,3]) * var(offsets=[0,2,7,10]) * #{rt}"]
+        [[[r] * 2, [r] * 5, [r] * 3], "var(offsets=[0,3]) * var(offsets=[0,2,7,10]) * #{rt}"]
       ].each do |v, s|
 
         it "type: #{s}" do
@@ -433,7 +437,7 @@ describe XND do
       end
     end
 
-    context "FixedString", v: true do
+    context "FixedString" do
       it "tests kind of string" do
         expect {
           XND.empty "FixedString"
@@ -460,11 +464,28 @@ describe XND do
       end
     end
 
-    context "FixedBytes", v: true do
-      # TODO: figure how to deal with byte strings in Ruby.
+    context "FixedBytes" do
+      r = {'a' => "\x00".b * 3, 'b' => "\x00".b * 10}
+
+      [
+        ["\x00".b, 'fixed_bytes(size=1)'],
+        ["\x00".b * 100, 'fixed_bytes(size=100)'],
+        ["\x00".b * 4, 'fixed_bytes(size=4, align=2)'],
+        ["\x00".b * 128, 'fixed_bytes(size=128, align=16)'],
+        [r, '{a: fixed_bytes(size=3), b: fixed_bytes(size=10)}'],
+        [[[r] * 3] * 2, '2 * 3 * {a: fixed_bytes(size=3), b: fixed_bytes(size=10)}']
+      ].each do |v, s|
+        it "type: #{s}" do
+          t = NDT.new s
+          x = XND.empty s
+
+          expect(x.type).to eq(t)
+          expect(x.value).to eq(v)          
+        end
+      end
     end
 
-    context "String", v: true do
+    context "String" do
       [
         'string',
         '(string)',
@@ -500,7 +521,7 @@ describe XND do
       end
     end
 
-    context "Bytes", focus: true do
+    context "Bytes" do
       r = { 'a' => "".b, 'b' => "".b }
       
       [
@@ -523,10 +544,10 @@ describe XND do
     end
 
     context "Char" do
-      it "raises NotImplementedError" do
+      it "raises ValueError" do
         expect {
           XND.empty "char('utf8')"
-        }.to raise_error(NotImplementedError)
+        }.to raise_error(ValueError)
       end
     end
 
@@ -562,9 +583,30 @@ describe XND do
       end
     end
 
+    context "FixedBytesKind" do
+      it "raises ValueError" do
+        expect {
+          XND.empty "FixedBytes"
+        }.to raise_error(ValueError)
+      end
+    end
+
     context "Primitive" do
-      EMPTY_TEST_CASES.each do |value, type_string|
+      empty_test_cases.each do |value, type_string|
         PRIMITIVE.each do |p|
+          ts = type_string % p
+
+          it "type: #{ts}" do
+            x = XND.empty ts
+
+            expect(x.value).to eq(value)
+            expect(x.type).to eq(NDT.new(ts))
+          end
+        end
+      end
+
+      empty_test_cases(false).each do |value, type_string|
+        BOOL_PRIMITIVE.each do |p|
           ts = type_string % p
 
           it "type: #{ts}" do
@@ -725,7 +767,7 @@ describe XND do
         x = XND.new true, type: "bool"
         expect {
           x.size
-        }.to raise_error(TypeError)
+        }.to raise_error(NoMethodError)
       end
     end
   end

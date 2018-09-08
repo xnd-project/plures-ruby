@@ -12,7 +12,7 @@ def expect_strict_unequal x1, x2
 end
 
 def expect_with_exception func, x, y
-  return if x.value.nil? && y.nil?
+  return if (x.value.nil? || y.nil?) #|| (x.value&.abs == 0 && y&.abs == 0)
 
   xerr = nil
   begin
@@ -40,12 +40,13 @@ end
 # ======================================================================
 
 PRIMITIVE = [
-  'bool',
   'int8', 'int16', 'int32', 'int64',
   'uint8', 'uint16', 'uint32', 'uint64',
   'float32', 'float64',
   'complex64', 'complex128'
 ]
+
+BOOL_PRIMITIVE = ['bool']
 
 EMPTY_TEST_CASES = [
   [0, "%s"],
@@ -54,6 +55,16 @@ EMPTY_TEST_CASES = [
   [[0, 0], "var(offsets=[0, 2]) * %s"],
   [[{"a" => 0, "b" => 0}] * 3, "3 * {a: int64, b: %s}"]
 ]
+
+def empty_test_cases(val=0)
+  [
+    [val, "%s"],
+    [[], "0 * %s"],
+    [[val], "1 * %s"],
+    [[val, val], "var(offsets=[0, 2]) * %s"],
+    [[{"a" => 0, "b" => val}] * 3, "3 * {a: int64, b: %s}"]
+  ]
+end
 
 # ======================================================================
 #                             Typed values
