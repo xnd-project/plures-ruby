@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe NDTypes do
+describe NDTypes do  
   context "::MAX_DIM" do
     it "returns the maximum dimension possible" do
       expect(NDTypes::MAX_DIM > 0).to eq(true)
@@ -9,7 +9,7 @@ describe NDTypes do
 
   context ".typedef" do
     it "creates a typedef for an official type" do
-      NDTypes.typedef "node", "int32"
+      NDType.typedef "node", "int32"
 
       t = NDTypes.new "4 * node"
       u = NDTypes.deserialize t.serialize

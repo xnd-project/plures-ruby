@@ -43,6 +43,42 @@ class RubyXND
 end
 
 class XND < RubyXND
+  # Immutable array type used when specifying XND tuples without wanting to
+  # specify the type. It is highly recommended to simply specify the type
+  # and use Ruby Arrays for specifying the data.
+  #
+  # If you call #to_a or #value on XND after specifying data as XND::T, note
+  # that XND will return the data in the form of Ruby Arrays.
+  #
+  # The sole purpose for the existence of this class is the facilitation of
+  # type inference. Before passing to the C interface, all instaces of XND::T
+  # will be converted into Ruby Arrays.
+  #
+  # @example
+  #
+  # x = XND.new XND::T.new([])
+  # #=> XND([], type: ())
+  class T
+    include Enumerable
+    attr_reader :data
+    
+    def initialize *args, &block
+      @data = args
+    end
+
+    def each &block
+      @data.each(&block)
+    end
+
+    def map &block
+      @data.map(&block)
+    end
+
+    def [] *index
+      @data[index]
+    end
+  end
+  
   MAX_DIM = NDTypes::MAX_DIM
   
   # Methods for type inference.
@@ -56,7 +92,7 @@ class XND < RubyXND
 
       def actual_type_of value, dtype: nil
         ret = nil
-        if value.is_a? Array
+        if value.is_a?(Array)
           data, shapes = data_shapes value
           opt = data.include? nil
 
@@ -96,6 +132,8 @@ class XND < RubyXND
           else
             raise ValueError, "all hash keys must be String."  
           end
+        elsif value.is_a? XND::T # tuple
+          ret = "(" + value.map { |v| actual_type_of(v) }.join(",") + ")"
         elsif value.nil?
           ret = '?float64'
         elsif value.is_a? Float
@@ -230,10 +268,19 @@ class XND < RubyXND
       type = TypeInference.type_of data, dtype: dtype
     else
       type = TypeInference.type_of data
+      data = convert_xnd_t_to_ruby_array data
+
+      puts "aa : #{data}"
     end
 
     super(type, data)
   end
 
   alias :to_a :value
+
+  private
+
+  def convert_xnd_t_to_ruby_array data
+    
+  end
 end

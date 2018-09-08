@@ -36,6 +36,20 @@ describe XND::TypeInference do
 
       expect(XND::TypeInference.data_shapes(data)).to eq(result)
     end
+
+    it "works for empty array" do
+      data = []
+      result = [[], [[0]]]
+
+      expect(XND::TypeInference.data_shapes(data)).to eq(result)
+    end
+
+    it "works for empty nested array" do
+      data = [[]]
+      result = [[], [[0], [1]]]
+
+      expect(XND::TypeInference.data_shapes(data)).to eq(result)
+    end
   end
 
   context ".add_dim" do

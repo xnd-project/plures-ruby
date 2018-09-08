@@ -2,33 +2,35 @@ require 'spec_helper'
 
 describe XND do
   context ".new" do
-    context "Type Inference", focus: true do
-      context "Tuple" do
+    context "Type Inference" do
+      context "Tuple", focus: true do
         d = {'a' => [2.0, "bytes".b], 'b' => ["str", Float::INFINITY] }
         typeof_d = "{a: (float64, bytes), b: (string, float64)}"
 
         [
-          [[], "()"],
-          [[[]], "(())"],
-          [[[], []], "((), ())"],
-          [[[[]], []], "((()), ())"],
-          [[[[]], [[], []]], "((()), ((), ()))"],
-          [[1, 2, 3], "(int64, int64, int64)"],
-          [[1.0, 2, "str"], "(float64, int64, string)"],
-          [[1.0, 2, ["str", "bytes".b, d]],
+          [XND::T.new(), "()"],
+          [XND::T.new(XND::T.new()), "(())"],
+          [XND::T.new(XND::T.new(), XND::T.new()), "((), ())"],
+          [XND::T.new(XND::T.new(XND::T.new()), XND::T.new()), "((()), ())"],
+          [XND::T.new(XND::T.new(XND::T.new()), XND::T.new(XND::T.new(), XND::T.new())),
+           "((()), ((), ()))"],
+          [XND::T.new(1, 2, 3), "(int64, int64, int64)"],
+          [XND::T.new(1.0, 2, "str"), "(float64, int64, string)"],
+          [XND::T.new(1.0, 2, XND::T.new("str", "bytes".b, d)),
            "(float64, int64, (string, bytes, #{typeof_d}))"]
         ].each do |v, t|
           it "type: #{t}" do
             x = XND.new v
 
+            puts "type: #{x.type} NDT: #{NDT.new(t)}."
             expect(x.type).to eq(NDT.new(t))
-            expect(x.value).to eq(v)            
+            expect(x.value).to eq(v)
           end
         end
       end
 
       context "Record" do
-        d = {'a' => [2.0, "bytes".b], 'b': ["str", Float::INFINITY ]}
+        d = {'a' => XND::T.new(2.0, "bytes".b), 'b' => XND::T.new("str", Float::INFINITY) }
         typeof_d = "{a: (float64, bytes), b: (string, float64)}"
 
         [
@@ -102,7 +104,7 @@ describe XND do
       end
 
       context "Int64" do
-        t = [1, -2, -3]
+        t = XND::T.new(1, -2, -3)
         typeof_t = "(int64, int64, int64)"
 
         [
@@ -124,7 +126,7 @@ describe XND do
       end
 
       context "String" do
-        t = ["supererogatory", "exiguous"]
+        t = XND::T.new("supererogatory", "exiguous")
         typeof_t = "(string, string)"
 
         [
@@ -146,7 +148,7 @@ describe XND do
       end
 
       context "Bytes" do
-        t = ["lagrange".b, "points".b]
+        t = XND::T.new("lagrange".b, "points".b)
         typeof_t = "(bytes, bytes)"
 
         [
