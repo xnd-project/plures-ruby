@@ -33,3 +33,13 @@ The `type` attribute is of type `NDT` and exists only on a per-object basis. It 
 to the particular instance of `XndObject`. Therefore, whenever making a view, it is important
 to store a reference to the `mblock` in the GC guard so that the memory that the view needs
 to access for its data needs does not get GC'd in case the root object needs to be GC'd.
+
+## Infinite ranges
+
+Ruby 2.6 will introduce infinite ranges using a prettier and less verbose syntax, but for now
+we're stuck with using `Float::INFINITY` every time we want to specify an infinite range. This
+can quickly get tedious to type. Therefore XND introduces the following syntax for infinite
+ranges for references arrays:
+
+* Full range (`0..Float::INFINITY`) : `INF`.
+* Part range (`4..Float::INFINITY`) : `4..INF`.

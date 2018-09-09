@@ -2,7 +2,7 @@ require 'spec_helper'
 
 describe XND do
   context ".new" do
-    context "Type Inference", focus: true do
+    context "Type Inference" do
       context "Tuple" do
         d = {'a' => XND::T.new(2.0, "bytes".b), 'b' => XND::T.new("str", Float::INFINITY) }
         typeof_d = "{a: (float64, bytes), b: (string, float64)}"
@@ -225,7 +225,7 @@ describe XND do
         expect {
           XND.new([[1,2,"peep!"], [2,3,4]], type: t)
         }.to raise_error(TypeError)      
-      end      
+      end
     end
 
     context "VarDim" do
@@ -784,7 +784,7 @@ describe XND do
     end
   end
 
-  context "#[]" do
+  context "#[]", focus: true do
     context "FixedDim" do
       it "returns single number slice for 1D array/1 number" do
         xnd = XND.new([1,2,3,4])
@@ -804,7 +804,71 @@ describe XND do
       it "returns single column in 2D array" do
         x = XND.new [[1,2,3], [4,5,6], [7,8,9]]
         expect(x[0..Float::INFINITY, 0]).to eq(XND.new([1,4,7]))
-      end      
+      end
+
+      it "returns the entire array" do
+        x = XND.new [[1,2,3], [4,5,6], [7,8,9]]
+        expect(x[0..Float::INFINITY]).to eq(x)
+      end
+
+      [
+        [[[11.12-2.3i, -1222+20e8i],
+          [Complex(Float::INFINITY, Float::INFINITY), -0.00002i],
+          [0.201+1i, -1+1e301i]], "3 * 2 * complex128"],
+        [[[11.12-2.3i, nil],
+          [Complex(Float::INFINITY, Float::INFINITY), nil],
+          [0.201+1i, -1+1e301i]], "3 * 2 * ?complex128"]
+      ].each do |v, s|
+        context "type: #{s}" do
+          before do
+            @arr = v
+            @t = NDT.new s
+            @x = XND.new v, type: @t
+          end
+
+          it "check values" do
+            expect(@x.to_a).to eq(@arr.to_a)
+          end
+
+          0.upto(3) do |i|
+            it "value: i= #{i}" do
+              expect(@x[i]).to eq(@arr[i])
+            end
+          end
+
+          3.times do |i|
+            2.times do |k|
+              it "value: i=#{i}. k=#{k}" do
+                expect(@x[i][k]).to eq(@arr[i][k])
+                expect(@x[i, k]).to eq(@arr[i][k])
+              end
+            end
+          end
+
+          it "tests full slices" do
+            expect(@x[INF].value).to eq(@arr)
+          end
+
+          ((-3...4).to_a + [Float::INFINITY]).each do |start|
+            ((-3...4).to_a + [Float::INFINITY]).each do |stop|
+              # FIXME: add step count when ruby supports it.
+              it "Range(start, stop): (#{start}, #{stop})" do
+                r = Range.new(start, stop)
+                expect(@x[r].value).to eq(@arr[r])
+              end
+            end
+          end
+
+          it "tests single rows" do
+            expect(@x[INF, 0].value).to eq(@arr[0..-1][0])
+            expect(@x[INF, 1].value).to eq(@arr[0..-1][1])
+          end
+        end
+      end
+    end
+
+    context "Fortran" do
+      
     end
   end
 
