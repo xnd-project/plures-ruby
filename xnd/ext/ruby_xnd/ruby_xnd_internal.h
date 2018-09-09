@@ -44,6 +44,7 @@
 #include <assert.h>
 #endif
 
+#include <float.h>
 #include "ruby.h"
 #include "ruby/encoding.h"
 #include "ruby_ndtypes.h"
@@ -72,5 +73,13 @@ typedef struct MemoryBlockObject MemoryBlockObject;
 
 /* Convert C int 't' to Ruby 'true' or 'false'. */
 #define INT2BOOL(t) (t ? Qtrue : Qfalse)
+
+#ifdef WORDS_BIGENDIAN
+#define IEEE_BIG_ENDIAN_P 1
+#define IEEE_LITTLE_ENDIAN_P NULL
+#else
+#define IEEE_LITTLE_ENDIAN_P 1
+#define IEEE_BIG_ENDIAN_P NULL
+#endif
 
 #endif  /* RUBY_XND_INTERNAL_H */

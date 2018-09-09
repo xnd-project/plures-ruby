@@ -2,9 +2,9 @@ require 'spec_helper'
 
 describe XND do
   context ".new" do
-    context "Type Inference" do
-      context "Tuple", focus: true do
-        d = {'a' => [2.0, "bytes".b], 'b' => ["str", Float::INFINITY] }
+    context "Type Inference", focus: true do
+      context "Tuple" do
+        d = {'a' => XND::T.new(2.0, "bytes".b), 'b' => XND::T.new("str", Float::INFINITY) }
         typeof_d = "{a: (float64, bytes), b: (string, float64)}"
 
         [
@@ -22,9 +22,8 @@ describe XND do
           it "type: #{t}" do
             x = XND.new v
 
-            puts "type: #{x.type} NDT: #{NDT.new(t)}."
             expect(x.type).to eq(NDT.new(t))
-            expect(x.value).to eq(v)
+            expect(x.value).to eq(XND::TypeInference.convert_xnd_t_to_ruby_array(v))
           end
         end
       end
@@ -120,7 +119,7 @@ describe XND do
             x = XND.new v
 
             expect(x.type).to eq(NDT.new(t))
-            expect(x.value).to eq(v)          
+            expect(x.value).to eq(XND::TypeInference.convert_xnd_t_to_ruby_array(v))
           end
         end
       end
@@ -142,7 +141,7 @@ describe XND do
             x = XND.new v
 
             expect(x.type).to eq(NDT.new(t))
-            expect(x.value).to eq(v)            
+            expect(x.value).to eq(XND::TypeInference.convert_xnd_t_to_ruby_array(v))
           end
         end
       end
@@ -164,7 +163,7 @@ describe XND do
             x = XND.new v
             
             expect(x.type).to eq(NDT.new(t))
-            expect(x.value).to eq(v)
+            expect(x.value).to eq(XND::TypeInference.convert_xnd_t_to_ruby_array(v))
           end
         end
       end

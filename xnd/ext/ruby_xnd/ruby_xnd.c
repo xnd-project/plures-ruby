@@ -545,6 +545,7 @@ mblock_init(xnd_t * const x, VALUE data)
   }
 
   case Float64: {
+    int i;
     double temp = NUM2DBL(data);
     return rb_xnd_pack_float64(temp, (unsigned char*)x->ptr, le(t->flags));
   }
@@ -1196,12 +1197,16 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
   }
 
   case Float32: {
-    double temp = (double)rb_xnd_unpack_float32((unsigned char*)x->ptr, le(t->flags));
+    double temp = 0.0;
+
+    rb_xnd_unpack_float32(&temp, (unsigned char*)x->ptr, le(t->flags));
     return DBL2NUM(temp);
   }
 
   case Float64: {
-    double temp = rb_xnd_unpack_float64((unsigned char*)x->ptr, le(t->flags));
+    double temp = 0.0;
+    
+    rb_xnd_unpack_float64(&temp, (unsigned char*)x->ptr, le(t->flags));
     return DBL2NUM(temp);
   }
 
@@ -1210,19 +1215,19 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
   }
 
   case Complex64: {
-    double real, imag;
+    double real = 0.0, imag = 0.0;
 
-    real = (double)rb_xnd_unpack_float32((unsigned char*)x->ptr, le(t->flags));
-    imag = (double)rb_xnd_unpack_float32((unsigned char*)x->ptr+4, le(t->flags));
+    rb_xnd_unpack_float32(&real, (unsigned char*)x->ptr, le(t->flags));
+    rb_xnd_unpack_float32(&imag, (unsigned char*)x->ptr+4, le(t->flags));
 
     return rb_complex_new(DBL2NUM(real), DBL2NUM(imag));
   }
 
   case Complex128: {
-    double real, imag;
+    double real = 0.0, imag = 0.0;
 
-    real = rb_xnd_unpack_float64((unsigned char*)x->ptr, le(t->flags));
-    imag = rb_xnd_unpack_float64((unsigned char*)x->ptr+8, le(t->flags));
+    rb_xnd_unpack_float64(&real, (unsigned char*)x->ptr, le(t->flags));
+    rb_xnd_unpack_float64(&imag, (unsigned char*)x->ptr+8, le(t->flags));
 
     return rb_complex_new(DBL2NUM(real), DBL2NUM(imag));
   }
@@ -1489,7 +1494,7 @@ XND_eqeq(VALUE self, VALUE other)
   int r;
 
   if (!XND_CHECK_TYPE(other)) {
-    rb_raise(rb_eArgError, "other object must be XND type.");
+    return Qfalse;
   }
 
   GET_XND(self, left_p);

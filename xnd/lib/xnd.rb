@@ -74,6 +74,10 @@ class XND < RubyXND
       @data.map(&block)
     end
 
+    def map! &block
+      @data.map!(&block)
+    end
+
     def [] *index
       @data[index]
     end
@@ -239,6 +243,26 @@ class XND < RubyXND
         
         'float64'
       end
+
+      def convert_xnd_t_to_ruby_array data
+        if data.is_a?(XND::T)
+          data.map! do |d|
+            convert_xnd_t_to_ruby_array d
+          end
+
+          return data.data
+        elsif data.is_a? Hash
+          data.each do |k, v|
+            data[k] = convert_xnd_t_to_ruby_array v
+          end
+        elsif data.is_a? Array
+          data.map! do |d|
+            convert_xnd_t_to_ruby_array d
+          end          
+        else
+          return data
+        end
+      end
     end
   end
   
@@ -268,19 +292,11 @@ class XND < RubyXND
       type = TypeInference.type_of data, dtype: dtype
     else
       type = TypeInference.type_of data
-      data = convert_xnd_t_to_ruby_array data
-
-      puts "aa : #{data}"
+      data = TypeInference.convert_xnd_t_to_ruby_array data
     end
 
     super(type, data)
   end
 
   alias :to_a :value
-
-  private
-
-  def convert_xnd_t_to_ruby_array data
-    
-  end
 end

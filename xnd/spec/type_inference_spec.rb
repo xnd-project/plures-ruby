@@ -69,15 +69,6 @@ describe XND::TypeInference do
       expect(XND::TypeInference.type_of(value)).to eq(type)
     end
 
-    it "generates correct ndtype for ragged array" do
-      value = [
-        [1,2,3],
-        [5]
-      ]
-      type = NDTypes.new "var * var * int64"
-      expect(XND::TypeInference.type_of(value)).to eq(type)
-    end
-
     it "generates correct ndtype for hash" do
       value = {
         "a" => "xyz",

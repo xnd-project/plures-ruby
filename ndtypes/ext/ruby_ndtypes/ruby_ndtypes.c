@@ -440,10 +440,6 @@ static int
 NDTypes_compare(VALUE self, VALUE other)
 {
   NdtObject *self_p, *other_p;
-  
-  if (!NDT_CHECK_TYPE(other)) {
-    rb_raise(rb_eArgError, "other argument must be of type NDT.");
-  }
 
   GET_NDT(self, self_p);
   GET_NDT(other, other_p);
@@ -455,6 +451,10 @@ NDTypes_compare(VALUE self, VALUE other)
 static VALUE
 NDTypes_eqeq(VALUE self, VALUE other)
 {
+  if (!NDT_CHECK_TYPE(other)) {
+    return Qfalse;
+  }
+  
   int r = NDTypes_compare(self, other);
   
   if (r == 0) {                  /* not equal */
@@ -469,6 +469,10 @@ NDTypes_eqeq(VALUE self, VALUE other)
 static VALUE
 NDTypes_neq(VALUE self, VALUE other)
 {
+  if (!NDT_CHECK_TYPE(other)) {
+    return Qfalse;
+  }
+  
   int r = NDTypes_compare(self, other);
   
   if (r == 0) {                  /* not equal */
