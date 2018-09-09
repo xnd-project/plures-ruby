@@ -104,5 +104,67 @@ bytes_from_string_and_size(const char *str, int64_t size)
 #endif
 }
 
+static long long
+mod(long long a, long long b)
+{
+    long long r = a % b;
+    return r < 0 ? r + b : r;
+}
+
+static inline int
+rb_range_unpack(VALUE range, long long *begin, long long *end, long long *step, size_t size)
+{
+  /* FIXME: As of 27 Aug. 2018 Ruby trunk implements step as a property of
+     Range and XND will support it as and when it is available. Maybe for 
+     now we can implement a #step iterator in a separate method.
+  */
+ *step = 1;
+ int exclude_end;
+ VALUE rb_begin = rb_funcall(range, rb_intern("begin"), 0, NULL);
+ VALUE rb_end = rb_funcall(range, rb_intern("end"), 0, NULL);
+ exclude_end = RTEST(rb_funcall(range, rb_intern("exclude_end?"), 0, NULL));
+ 
+ if (RB_TYPE_P(rb_begin, T_FLOAT)) {
+   double value = RFLOAT_VALUE(rb_begin);
+
+   if (isinf(value)) {
+     *begin = 0;  
+   }
+ }
+ else {
+   long long temp = NUM2LL(rb_begin);
+
+   if (temp < 0) {            /* if negative index map to positive. */
+     temp = mod(temp, (long long)size);
+   }
+
+   *begin = temp;
+ }
+
+ if (RB_TYPE_P(rb_end, T_FLOAT)) {
+   double value = RFLOAT_VALUE(rb_end);
+
+   if (isinf(value)) {
+     *end = INT64_MAX;
+   }
+ }
+ else {
+   long long temp = NUM2LL(rb_end);
+
+   if (temp < 0) {              /* if negative index map to positive. */
+     temp = mod(temp, (long long)size);
+   }
+   
+   *end = temp;
+ }
+
+ /* a[0..0] in Ruby returns the 0th index. 
+    a[0...0] in Ruby returns empty array like a[0:0] in Python.
+    libxnd does not include the last index by default.  
+*/
+ if (!exclude_end) {          
+   *end += 1;
+ }
+}
 
 #endif  /* UTIL_H */

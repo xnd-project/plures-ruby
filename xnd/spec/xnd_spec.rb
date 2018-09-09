@@ -784,7 +784,7 @@ describe XND do
     end
   end
 
-  context "#[]", focus: true do
+  context "#[]" do
     context "FixedDim" do
       it "returns single number slice for 1D array/1 number" do
         xnd = XND.new([1,2,3,4])
@@ -812,12 +812,18 @@ describe XND do
       end
 
       [
-        [[[11.12-2.3i, -1222+20e8i],
-          [Complex(Float::INFINITY, Float::INFINITY), -0.00002i],
-          [0.201+1i, -1+1e301i]], "3 * 2 * complex128"],
-        [[[11.12-2.3i, nil],
-          [Complex(Float::INFINITY, Float::INFINITY), nil],
-          [0.201+1i, -1+1e301i]], "3 * 2 * ?complex128"]
+        [
+          [
+           [11.12-2.3i, -1222+20e8i],
+           [Complex(Float::INFINITY, Float::INFINITY), -0.00002i],
+           [0.201+1i, -1+1e301i]
+          ], "3 * 2 * complex128"],
+        [
+          [
+            [11.12-2.3i, nil],
+            [Complex(Float::INFINITY, Float::INFINITY), nil],
+            [0.201+1i, -1+1e301i]
+          ], "3 * 2 * ?complex128"]
       ].each do |v, s|
         context "type: #{s}" do
           before do
@@ -830,17 +836,17 @@ describe XND do
             expect(@x.to_a).to eq(@arr.to_a)
           end
 
-          0.upto(3) do |i|
+          0.upto(2) do |i|
             it "value: i= #{i}" do
-              expect(@x[i]).to eq(@arr[i])
+              expect(@x[i].to_a).to eq(@arr[i])
             end
           end
 
           3.times do |i|
             2.times do |k|
               it "value: i=#{i}. k=#{k}" do
-                expect(@x[i][k]).to eq(@arr[i][k])
-                expect(@x[i, k]).to eq(@arr[i][k])
+                expect(@x[i][k].value).to eq(@arr[i][k])
+                expect(@x[i, k].value).to eq(@arr[i][k])
               end
             end
           end
@@ -852,9 +858,14 @@ describe XND do
           ((-3...4).to_a + [Float::INFINITY]).each do |start|
             ((-3...4).to_a + [Float::INFINITY]).each do |stop|
               # FIXME: add step count when ruby supports it.
-              it "Range(start, stop): (#{start}, #{stop})" do
+              it "Range[#{start}, #{stop}]", focus: true do
                 r = Range.new(start, stop)
                 expect(@x[r].value).to eq(@arr[r])
+              end
+
+              it "Range[#{start}, #{stop})" do
+                r = Range.new(start, stop, true)
+                expect(@x[r].value).to eq(@arr[r])                
               end
             end
           end
@@ -868,14 +879,27 @@ describe XND do
     end
 
     context "Fortran" do
-      
+      before do
+        
+      end
     end
   end
 
   context "#[]=" do
     context "FixedDim" do
+
+    end
+
+    context "Fortran" do
       before do
-        
+        @x = XND.empty "!2 * 4 * float64"
+        @v = [[0.0, 1.0, 2.0, 3.0], [4.0, 5.0, 6.0, 7.0]]
+      end
+      
+      it "full slice" do
+        @x[INF] = @v
+
+        expect(@x.value).to eq(@v)
       end
     end
   end

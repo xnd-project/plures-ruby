@@ -847,6 +847,8 @@ typedef struct XndObject {
                                                     &XndObject_type, xnd_p)
 #define WRAP_XND(klass, xnd_p) TypedData_Wrap_Struct(klass, &XndObject_type, xnd_p)
 
+static VALUE XND_size(VALUE self);
+
 /* Allocate an XndObject and return wrapped in a Ruby object. */
 static VALUE
 XndObject_alloc(void)
@@ -1255,7 +1257,7 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
 
     case Utf32: {
       rb_encoding *utf32 = rb_enc_find("UTF-32");
-      codepoints = u32_skip_trailing_zero((uint16_t *)x->ptr, codepoints);
+      codepoints = u32_skip_trailing_zero((uint32_t *)x->ptr, codepoints);
       
       return rb_enc_str_new(x->ptr, codepoints*4, utf32);
     }
@@ -1384,8 +1386,14 @@ RubyXND_view_move_type(XndObject *src_p, xnd_t *x)
   return view;
 }
 
+/* Convert a single Ruby object index into a form that XND can understand. 
+   
+   @param *key
+   @param obj
+   @param size Size of object. 1 for all scalars and the actual size otherwise.
+*/
 static uint8_t
-convert_single(xnd_index_t *key, VALUE obj)
+convert_single(xnd_index_t *key, VALUE obj, size_t size)
 {
   if (RB_TYPE_P(obj, T_FIXNUM)) {
     int64_t i = NUM2LL(obj);
@@ -1396,7 +1404,7 @@ convert_single(xnd_index_t *key, VALUE obj)
     return KEY_INDEX;
   }
   else if (RB_TYPE_P(obj, T_STRING)) {
-    const char *s = StringValuePtr(obj);
+    const char *s = StringValueCPtr(obj);
 
     key->tag = FieldName;
     key->FieldName = s;
@@ -1404,20 +1412,33 @@ convert_single(xnd_index_t *key, VALUE obj)
     return KEY_FIELD;
   }
   else if (CLASS_OF(obj) == rb_cRange) {
-    size_t begin = NUM2LL(rb_funcall(obj, rb_intern("begin"), 0, NULL));
-    size_t end = NUM2LL(rb_funcall(obj, rb_intern("end"), 0, NULL));
-    /* FIXME: As of 27 Aug. 2018 Ruby trunk implements step as a property of
-       Range and XND will support it as and when it is available. Maybe for 
-       now we can implement a #step iterator in a separate method.
-    */
-    size_t step = 1; 
+    size_t begin, end, step;
 
+    rb_range_unpack(obj, &begin, &end, &step, size);
     key->tag = Slice;
     key->Slice.start = begin;
     key->Slice.stop = end;
     key->Slice.step = step;
 
+    printf("start: %ld. end: %ld. step: %ld.\n ", begin, end, step);
+
     return KEY_SLICE;
+  }
+  // case of INF (infinite range syntax sugar)
+  else if (RB_TYPE_P(obj, T_FLOAT)) {
+    double value = RFLOAT_VALUE(obj);
+
+    if (isinf(value)) {
+      key->tag = Slice;
+      key->Slice.start = 0;
+      key->Slice.stop = INT64_MAX;
+      key->Slice.step = 1;
+
+      return KEY_SLICE;
+    }
+    else {
+      rb_raise(rb_eArgError, "wrong object specified in index.");
+    }
   }
   else {
     rb_raise(rb_eArgError, "wrong object specified in index.");
@@ -1425,7 +1446,7 @@ convert_single(xnd_index_t *key, VALUE obj)
 }
 
 static uint8_t
-convert_key(xnd_index_t *indices, int *len, int argc, VALUE *argv)
+convert_key(xnd_index_t *indices, int *len, int argc, VALUE *argv, size_t size)
 {
   uint8_t flags = 0;
   VALUE x;
@@ -1437,7 +1458,7 @@ convert_key(xnd_index_t *indices, int *len, int argc, VALUE *argv)
 
     for (unsigned int i = 0; i < argc; i++) {
       x = argv[i];
-      flags |= convert_single(indices+i, x);
+      flags |= convert_single(indices+i, x, size);
       if (flags & KEY_ERROR) {
         return KEY_ERROR;
       }
@@ -1448,7 +1469,7 @@ convert_key(xnd_index_t *indices, int *len, int argc, VALUE *argv)
   }
 
   *len = 1;
-  return convert_single(indices, argv[0]);
+  return convert_single(indices, argv[0], size);
 }
 
 /* Implement the #[] Ruby method. */
@@ -1458,20 +1479,25 @@ XND_array_aref(int argc, VALUE *argv, VALUE self)
   NDT_STATIC_CONTEXT(ctx);
   xnd_index_t indices[NDT_MAX_DIM];
   xnd_t x;
-  int len;
+  int len, state;
   uint8_t flags;
   XndObject *xnd_p;
+  size_t size;
+  VALUE rb_size;
 
   if (argc == 0) {
     rb_raise(rb_eArgError, "expected atleast one argument for #[].");
   }
 
-  flags = convert_key(indices, &len, argc, argv);
+  GET_XND(self, xnd_p);
+  rb_size = rb_protect(XND_size, self, &state);
+  size = state ? 1 : NUM2LL(rb_size);
+  
+  flags = convert_key(indices, &len, argc, argv, size);
   if (flags & KEY_ERROR) {
     rb_raise(rb_eArgError, "something is wrong with the array key.");
   }
   
-  GET_XND(self, xnd_p);
   x = xnd_subscript(&xnd_p->xnd, indices, len, &ctx);
   if (x.ptr == NULL) {
     seterr(&ctx);

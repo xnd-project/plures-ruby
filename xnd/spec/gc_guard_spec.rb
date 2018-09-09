@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe RubyXND::GCGuard, focus: true do
+describe RubyXND::GCGuard do
   it "stores objects as key and corresponding mblock object as value" do
     xnd = XND.new([[1,2,3]])
 
