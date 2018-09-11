@@ -30,6 +30,8 @@ Links:
 
 # Differences between Python and Ruby wrappers
 
+## True and false
+
 Some differences do arise between the Python and Ruby wrappers mainly due to semantic
 differences between the two languages. For example, in Python `True` and `False` are
 simply keywords for `1` and `0` respectively. Therefore, `if 0:` in Python will evaluate
@@ -41,3 +43,12 @@ is `truthy` (including `0`). `false == 0` evaluates to `false` in Ruby due to th
 Therefore, when creating boolean typed arrays, the result will always be in terms of `true`
 and `false` in Ruby whereas in Python it can be `0` or `False` for falsey values and anything
 else for truth-y.
+
+## Slice ranges
+
+Ruby 2.6 introduces infinite ranges, however the rubies before that rely on `Float::INFINITY`
+to denote 'infinity' in a Range. To make XND work with infinite ranges, XND will treat
+`Float::INFINITY` as 'infinite' in a Range until Ruby 2.6 is released.
+
+Note that this behaviour is contrary to the behaviour of `Array`, where specfying `Float::INFINITY`
+in a Range throws an error.

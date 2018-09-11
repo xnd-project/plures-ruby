@@ -1420,8 +1420,6 @@ convert_single(xnd_index_t *key, VALUE obj, size_t size)
     key->Slice.stop = end;
     key->Slice.step = step;
 
-    printf("start: %ld. end: %ld. step: %ld.\n ", begin, end, step);
-
     return KEY_SLICE;
   }
   // case of INF (infinite range syntax sugar)

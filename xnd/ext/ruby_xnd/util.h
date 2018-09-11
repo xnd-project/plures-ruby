@@ -119,10 +119,9 @@ rb_range_unpack(VALUE range, long long *begin, long long *end, long long *step, 
      now we can implement a #step iterator in a separate method.
   */
  *step = 1;
- int exclude_end;
  VALUE rb_begin = rb_funcall(range, rb_intern("begin"), 0, NULL);
  VALUE rb_end = rb_funcall(range, rb_intern("end"), 0, NULL);
- exclude_end = RTEST(rb_funcall(range, rb_intern("exclude_end?"), 0, NULL));
+ int exclude_end = RTEST(rb_funcall(range, rb_intern("exclude_end?"), 0, NULL));
  
  if (RB_TYPE_P(rb_begin, T_FLOAT)) {
    double value = RFLOAT_VALUE(rb_begin);
@@ -146,6 +145,7 @@ rb_range_unpack(VALUE range, long long *begin, long long *end, long long *step, 
 
    if (isinf(value)) {
      *end = INT64_MAX;
+     return;
    }
  }
  else {

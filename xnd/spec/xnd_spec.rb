@@ -857,22 +857,30 @@ describe XND do
 
           ((-3...4).to_a + [Float::INFINITY]).each do |start|
             ((-3...4).to_a + [Float::INFINITY]).each do |stop|
-              # FIXME: add step count when ruby supports it.
-              it "Range[#{start}, #{stop}]", focus: true do
-                r = Range.new(start, stop)
-                expect(@x[r].value).to eq(@arr[r])
-              end
-
-              it "Range[#{start}, #{stop})" do
-                r = Range.new(start, stop, true)
-                expect(@x[r].value).to eq(@arr[r])                
+              [true, false].each do |exclude_end|
+                # FIXME: add step count when ruby supports it.
+                arr_s =
+                  if start == Float::INFINITY && stop != Float::INFINITY
+                    Range.new 0, stop, exclude_end
+                  elsif start != Float::INFINITY && stop == Float::INFINITY
+                    Range.new start, 9999, exclude_end
+                  elsif start == Float::INFINITY && stop == Float::INFINITY
+                    Range.new 0, 9999, exclude_end
+                  else
+                    Range.new start, stop, exclude_end
+                  end
+                
+                it "Range[#{start}, #{stop}#{exclude_end ? ')' : ']'}" do
+                  r = Range.new(start, stop, exclude_end)
+                  expect(@x[r].value).to eq(@arr[arr_s])
+                end
               end
             end
           end
 
           it "tests single rows" do
-            expect(@x[INF, 0].value).to eq(@arr[0..-1][0])
-            expect(@x[INF, 1].value).to eq(@arr[0..-1][1])
+            expect(@x[INF, 0].value).to eq(@arr.transpose[0])
+            expect(@x[INF, 1].value).to eq(@arr.transpose[1])
           end
         end
       end
