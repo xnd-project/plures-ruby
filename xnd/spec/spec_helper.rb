@@ -35,6 +35,18 @@ def expect_with_exception func, x, y
   end
 end
 
+def get_inf_or_normal_range start, stop, exclude_end
+  if start == Float::INFINITY && stop != Float::INFINITY
+    Range.new 0, stop, exclude_end
+  elsif start != Float::INFINITY && stop == Float::INFINITY
+    Range.new start, 9999, exclude_end
+  elsif start == Float::INFINITY && stop == Float::INFINITY
+    Range.new 0, 9999, exclude_end
+  else
+    Range.new start, stop, exclude_end
+  end
+end
+
 # ======================================================================
 #                             Primitive types 
 # ======================================================================

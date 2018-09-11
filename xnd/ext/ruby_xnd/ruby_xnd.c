@@ -1404,7 +1404,7 @@ convert_single(xnd_index_t *key, VALUE obj, size_t size)
     return KEY_INDEX;
   }
   else if (RB_TYPE_P(obj, T_STRING)) {
-    const char *s = StringValueCPtr(obj);
+    const char *s = StringValuePtr(obj);
 
     key->tag = FieldName;
     key->FieldName = s;

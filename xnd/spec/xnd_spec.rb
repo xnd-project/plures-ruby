@@ -197,8 +197,8 @@ describe XND do
             }.to raise_error(NotImplementedError)           
           end
         end
-      end
-    end
+      end # context Optional
+    end # context TypeInference
     
     context "FixedDim" do
       it "creates a fixed array" do
@@ -251,6 +251,17 @@ describe XND do
       end
     end
 
+    context "String" do
+      it "creates new String array" do
+        t = '2 * {a: complex128, b: string}'
+        x = XND.new([{'a' => 2+3i, 'b' => "thisguy"},
+                    {'a' => 1+4i, 'b' => "thatguy"}], type: t)
+
+        expect(x[0]['b']).to eq("thisguy")
+        expect(x[1]['b']).to eq("thatguy")
+      end
+    end # context String
+
     context "Bool" do
       it "from bool" do
         x = XND.new true, type: "bool"
@@ -283,8 +294,175 @@ describe XND do
       skip "tests broken input - how can this be done in Ruby?" do
         
       end
-    end
-  end
+    end # context Bool
+
+    context "Signed" do
+      [8, 16, 32, 64].each do |n|
+        it "tests bounds for n=#{n}" do
+          t = "int#{n}"
+
+          v = -2**(n-1)
+          x = XND.new(v, type: t)
+          expect(x.value).to eq(v)
+          expect { XND.new v-1, type: t }.to raise_error { |error|
+            error.should be_a(ValueError || OverflowError)
+          }
+
+          v = 2**(n-1) - 1
+          x = XND.new(v, type: t)
+          expect(x.value, v)
+          expect { XND.new v+1, type: t }.to raise_error { |error| 
+            error.should be_a(ValueError || OverflowError)
+          }
+        end
+      end
+    end # context Signed
+
+    context "Unsigned" do
+      [8, 16, 32, 64].each do |n|
+        it "tests bounds n=#{n}" do
+          t = "uint#{n}"
+
+          v = 0
+          x = XND.new v, type: t
+          expect(x.value).to eq(v) 
+          expect { XND.new v-1, type: t }.to raise_error { |error|
+            error.should be_a(ValueError || OverflowError)
+          }
+
+          v = 2**n - 1
+          x = XND.new v, type: t
+          expect(x.value).to eq(v)
+          expect { XND.new v+1, type: t }.to raise_error { |error|
+            error.should be_a(ValueError || OverflowError)
+          }
+        end
+      end
+    end # context Unsigned
+
+    context "Float32" do
+      it "tests bounds" do
+        denorm_min = Float.from_hex "0x1p-149"
+        lowest = Float.from_hex "-0x1.fffffep+127"
+        max = Float.from_hex "0x1.fffffep+127"
+        inf = Float.from_hex "0x1.ffffffp+127"
+
+        x = XND.new denorm_min, type: "float32"
+        expect(x.value).to eq(denorm_min)
+
+        x = XND.new lowest, type: "float32"
+        expect(x.value).to eq(lowest)
+
+        x = XND.new max, type: "float32"
+        expect(x.value).to eq(max)
+
+        expect { XND.new(inf, type: "float32") }.to raise_error(OverflowError)
+        expect { XND.new(-inf, type: "float32") }.to raise_error(OverflowError)
+      end
+
+      it "tests special values" do
+        x = XND.new Float::INFINITY, type: "float32"
+        expect(x.value.infinite?).to eq(true)
+
+        x = XND.new Float::NaN, type: "float32"
+        expect(x.value.nan?).to eq(true)
+      end
+    end # context Float32
+
+    context "Float64" do
+      it "tests bounds" do
+        denorm_min = Float.from_hex "0x0.0000000000001p-1022"
+        lowest = Float.from_hex "-0x1.fffffffffffffp+1023"
+        max = Float.from_hex "0x1.fffffffffffffp+1023"
+
+        x = XND.new denorm_min, type: "float64"
+        expect(x.value).to eq(denorm_min)
+
+        x = XND.new lowest, type: "float64"
+        expect(x.value).to eq(lowest)
+
+        x = XND.new max, type: "float64"
+        expect(x.value).to eq(max)
+      end
+
+      it "tests special values" do
+        x = XND.new Float::INFINITY, type: "float64"
+        expect(x.value.infinite?).to eq(true)
+
+        x = XND.new Float::NaN, type: "float64"
+        expect(x.value.infinite?).to eq(true)
+      end
+    end # context Float64
+
+    context "Complex64" do
+      it "tests bounds" do
+        denorm_min = Float.from_hex "0x1p-149"
+        lowest = Float.from_hex "-0x1.fffffep+127"
+        max = Float.from_hex "0x1.fffffep+127"
+        inf = Float.from_hex "0x1.ffffffp+127"
+
+        v = Complex(denorm_min, denorm_min)
+        x = XND.new v, type: "complex64"
+        expect(x.value).to eq(v)
+
+        v = Complex(lowest, lowest)
+        x = XND.new v, type: "complex64"
+        expect(x.value).to eq(v)
+
+        v = Complex(max, max)
+        x = XND.new v, type: "complex64"
+        expect(x.value).to eq(v)
+
+        v = Complex(inf, inf)
+        expect { XND.new v, type: "complex64" }.to raise_error(OverflowError)
+
+        v = Complex(-inf, -inf)
+        expect { XND.new v, type: "complex64" }.to raise_error(OverflowError)
+      end
+
+      it "tests special values" do
+        x = XND.new Complex(Float::INFINITY, 0), type: "complex64"
+        expect(x.value.real.infinite?).to eq(true)
+        expect(x.value.imag).to eq(0.0)
+
+        x = XND.new Complex(Float::NaN, 0), type: "complex64"
+        expect(x.value.real.infinite?).to eq(true)
+        expect(x.value.imag).to eq(0.0)
+      end
+    end # context Complex64
+
+    context "Complex128" do
+      it "tests bounds" do
+        denorm_min = Float.from_hex("0x0.0000000000001p-1022")
+        lowest = Float.from_hex("-0x1.fffffffffffffp+1023")
+        max = Float.from_hex("0x1.fffffffffffffp+1023")
+
+        v = Complex(denorm_min, denorm_min)
+        x = XND.new v, type: "complex128"
+        expect(x.value).to eq(v)
+
+        v = Complex(lowest, lowest)
+        x = XND.new v, type: "complex128"
+        expect(x.value).to eq(v)
+
+        v = Complex(max, max)
+        x = XND.new v, type: "complex128"
+        expect(x.value).to eq(v)
+      end
+
+      it "tests special values" do
+        x = XND.new Complex(Float::INFINITY), type: "complex128"
+
+        expect(x.value.real.infinite?).to eq(true)
+        expect(x.value.imag).to eq(0.0)
+
+        x = XND.new Complex(Float::NaN), type: "complex128"
+
+        expect(x.value.real.infinite?).to eq(true)
+        expect(x.value.imag).to eq(0.0)
+      end
+    end # context Complex128
+  end # context .new
 
   context ".empty" do
     context "FixedDim" do      
@@ -344,6 +522,19 @@ describe XND do
             expect(x.size).to eq(vv.size)
           end
         end
+      end
+
+      it "returns empty view" do
+        inner = [[0+0i] * 5] * 4
+        x = XND.empty "2 * 3 * ref(4 * 5 * complex128)"
+
+        y = x[1][2]
+        expect(y.is_a?(XND)).to eq(true)
+        expect(y.value).to eq(inner)
+
+        y = x[1, 2]
+        expect(y.is_a?(XND)).to eq(true)
+        expect(y.value).to eq(inner)
       end
     end
 
@@ -520,6 +711,21 @@ describe XND do
           end
         end
       end
+
+      it "returns empty view" do
+        # If a constr is a dtype but contains an array itself, indexing should
+        # return a view and not a Python value.
+        inner = [[""] * 5] * 4
+        x = XND.empty("2 * 3 * InnerArray(4 * 5 * string)")
+
+        y = x[1][2]
+        expect(y.is_a?(XND)).to eq(true)
+        expect(y.value).to eq(inner)
+
+        y = x[1, 2]
+        expect(y.is_a?(XND)).to eq(true)
+        expect(y.value).to eq(inner)
+      end
     end
 
     context "Nominal" do
@@ -547,6 +753,22 @@ describe XND do
         end
 
         c += 1
+      end
+
+      it "returns empty view" do
+        # If a typedef is a dtype but contains an array itself, indexing should
+        # return a view and not a Python value.
+        NDT.typedef("inner_array", "4 * 5 * string")
+        inner = [[""] * 5] * 4
+        x = XND.empty("2 * 3 * inner_array")
+
+        y = x[1][2]
+        expect(y.is_a?(XND)).to eq(true)
+        expect(y.value).to eq(inner)
+
+        y = x[1, 2]
+        expect(y.is_a?(XND)).to eq(true)
+        expect(y.value).to eq(inner)
       end
     end
 
@@ -859,17 +1081,8 @@ describe XND do
             ((-3...4).to_a + [Float::INFINITY]).each do |stop|
               [true, false].each do |exclude_end|
                 # FIXME: add step count when ruby supports it.
-                arr_s =
-                  if start == Float::INFINITY && stop != Float::INFINITY
-                    Range.new 0, stop, exclude_end
-                  elsif start != Float::INFINITY && stop == Float::INFINITY
-                    Range.new start, 9999, exclude_end
-                  elsif start == Float::INFINITY && stop == Float::INFINITY
-                    Range.new 0, 9999, exclude_end
-                  else
-                    Range.new start, stop, exclude_end
-                  end
-                
+                arr_s = get_inf_or_normal_range start, stop, exclude_end
+
                 it "Range[#{start}, #{stop}#{exclude_end ? ')' : ']'}" do
                   r = Range.new(start, stop, exclude_end)
                   expect(@x[r].value).to eq(@arr[arr_s])
@@ -887,11 +1100,142 @@ describe XND do
     end
 
     context "Fortran" do
-      before do
-        
+      [
+        [[[11.12-2.3i, -1222+20e8i],
+          [Complex(Float::INFINITY, Float::INFINITY), -0.00002i],
+          [0.201+1i, -1+1e301i]], "!3 * 2 * complex128"],
+        [[[11.12-2.3i, nil],
+          [Complex(Float::INFINITY, Float::INFINITY), nil],
+          [0.201+1i, -1+1e301i]], "!3 * 2 * ?complex128"]
+      ].each do |v, s|
+        context "type: #{s}" do
+          before do
+            @arr = v
+            @t = NDT.new s
+            @x = XND.new v, type: @t
+          end
+
+          (0).upto(2) do |i|
+            it "check row i= #{i}" do
+              expect(@x[i].value).to eq(@arr[i])              
+            end
+          end
+
+          (0).upto(2) do |i|
+            (0).upto(1) do |k|
+              it "check elements i=#{i} k=#{k}" do
+                expect(@x[i][k].value).to eq(@arr[i][k])
+                expect(@x[i, k].value).to eq(@arr[i][k])
+              end
+            end
+          end
+
+          it "checks full slice" do
+            expect(@x[INF].to_a).to eq(@arr)
+          end
+
+          ((-3..-3).to_a + [Float::INFINITY]).each do |start|
+            ((-3..-3).to_a + [Float::INFINITY]).each do |stop|
+              [true, false].each do |exclude_end|
+                # FIXME: add step count loop post Ruby 2.6
+                arr_s = get_inf_or_normal_range start, stop, exclude_end
+
+                it "Range[#{start}, #{stop}#{exclude_end ? ')' : ']'}" do
+                  r = Range.new start, stop, exclude_end
+                  expect(@x[r].value).to eq(@arr[arr_s])
+                end
+              end
+            end
+          end
+
+          it "checks column slices" do
+            expect(@x[INF, 0].value).to eq(@arr.transpose[0])
+            expect(@x[INF, 1].value).to eq(@arr.transpose[1])
+          end
+        end
       end
     end
-  end
+
+    context "Ref" do
+      before do
+        # If a ref is a dtype but contains an array itself, indexing through
+        # the ref should work transparently.
+        @inner = [['a', 'b', 'c', 'd', 'e'],
+                 ['f', 'g', 'h', 'i', 'j'],
+                 ['k', 'l', 'm', 'n', 'o'],
+                 ['p', 'q', 'r', 's', 't']]
+        @v = [[@inner] * 3] * 2
+        @x = XND.new(@v, type: "2 * 3 * ref(4 * 5 * string)")
+      end
+
+      (0).upto(1) do |i|
+        (0).upto(2) do |j|
+          (0).upto(3) do |k|
+            (0).upto(4) do |l|
+              it "index: i=#{i} j=#{j} k=#{k} l=#{l}" do
+                expect(@x[i][j][k][l]).to eq(@inner[k][l])
+                expect(@x[i, j, k, l]).to eq(@inner[k][l])                
+              end
+            end
+          end
+        end
+      end
+    end
+
+    context "Constr" do
+      before do
+        # If a constr is a dtype but contains an array itself, indexing through
+        # the constructor should work transparently.
+        @inner = [['a', 'b', 'c', 'd', 'e'],
+                 ['f', 'g', 'h', 'i', 'j'],
+                 ['k', 'l', 'm', 'n', 'o'],
+                 ['p', 'q', 'r', 's', 't']]
+        @v = [[@inner] * 3] * 2
+        @x = XND.new(@v, type: "2 * 3 * InnerArray(4 * 5 * string)")
+      end
+
+      (0).upto(1) do |i|
+        (0).upto(2) do |j|
+          (0).upto(3) do |k|
+            (0).upto(4) do |l|
+              it "slice: i=#{i} j=#{j} k=#{k} l=#{l}" do
+                expect(@x[i][j][k][l]).to eq(@inner[k][l])
+                expect(@x[i, j, k, l]).to eq(@inner[k][l])
+              end
+            end
+          end
+        end
+      end
+    end # context Constr
+
+    context "Nominal" do
+      before do
+        # If a typedef is a dtype but contains an array itself, indexing through
+        # the constructor should work transparently.
+        NDT.typedef("inner", "4 * 5 * string")
+        @inner = [['a', 'b', 'c', 'd', 'e'],
+                 ['f', 'g', 'h', 'i', 'j'],
+                 ['k', 'l', 'm', 'n', 'o'],
+                 ['p', 'q', 'r', 's', 't']]
+        @v = 2 * [3 * [@inner]]
+        @x = XND.new(v, type: "2 * 3 * inner")        
+      end
+
+
+      (0).upto(1) do |i|
+        (0).upto(2) do |j|
+          (0).upto(3) do |k|
+            (0).upto(4) do |l|
+              it "slice: i=#{i} j=#{j} k=#{k} l=#{l}" do
+                expect(@x[i][j][k][l]).to eq(@inner[k][l])
+                expect(@x[i, j, k, l]).to eq(@inner[k][l])
+              end
+            end
+          end
+        end
+      end      
+    end # context Nominal
+  end # context #[]
 
   context "#[]=" do
     context "FixedDim" do
@@ -957,8 +1301,12 @@ describe XND do
       it "tests corner cases and many dtypes" do
         
       end
+    end # context FixedDim
+
+    context "Float32" do
+      
     end
-  end
+  end # Context #strict_equal
 
   context "#to_a" do
     context "FixedDim" do
@@ -1004,6 +1352,20 @@ describe XND do
         expect {
           x.size
         }.to raise_error(NoMethodError)
+      end
+    end
+
+    context "Signed" do
+      it "raises error" do
+        x = XND.new 10, type: "int16"
+        expect { x.size }.to raise_error(NoMethodError)
+      end
+    end
+
+    context "Unsigned" do
+      it "raises error" do
+        x = XND.new 10, type: "uint64"
+        expect { x.size }.to raise_error(NoMethodError)
       end
     end
   end

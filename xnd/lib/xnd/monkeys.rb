@@ -26,3 +26,11 @@ class String
     self.encode Encoding::UTF_32
   end
 end
+
+class Float
+  
+  # Create float from a string.
+  def self.from_hex string
+    [s.to_i(16)].pack('L').unpack('F')[0]
+  end
+end
