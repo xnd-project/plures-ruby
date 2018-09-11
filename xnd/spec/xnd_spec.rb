@@ -326,8 +326,8 @@ describe XND do
         end
         
         it "tests bounds v+1. n=#{n}", focus: true do
-          t = "uint#{n}
-"
+          t = "uint#{n}"
+          
           v = 2**n - 2
           x = XND.new v, type: t
           expect(x.value).to eq(v)
@@ -1248,22 +1248,446 @@ describe XND do
 
   context "#[]=" do
     context "FixedDim" do
+      context "full data" do
+        before do
+          @x = XND.empty "2 * 4 * float64"
+          @v = [[0.0, 1.0, 2.0, 3.0], [4.0, 5.0, 6.0, 7.0]]
+        end
 
-    end
+        it "assigns full slice" do
+          @x[INF] = @v
+          expect(@x.value).to eq(@v)
+        end
+
+        it "assigns subarray" do
+          @x[0] = @v[0] = [1.2, -3e45, Float::INFINITY, -322.25]
+          expect(@x.value).to eq(@v)
+
+          @x[1] = @v[1] = [-11.25, 3.355e301, -0.000002, -5000.2]
+          expect(@x.value).to eq (@v)
+        end
+
+        it "assigns single values" do
+          0.upto(1) do |i|
+            0.upto(3) do |j|
+              @x[i][j] = @v[i][j] = 3.22 * i + j
+            end
+          end
+
+          expect(@x.value).to eq(@v)
+        end
+
+        it "supports tuple indexing" do
+          0.upto(1) do |i|
+            0.upto(3) do |j|
+              @x[i, j] = @v[i][j] = -3.002e1 * i + j
+            end
+          end
+
+          expect(@x.value).to eq(@v)
+        end
+      end # context full data
+
+      context "optional data" do
+        before do
+          @x = XND.empty "2 * 4 * ?float64"
+          @v = [[10.0, nil, 2.0, 100.12], [nil, nil, 6.0, 7.0]]     
+        end
+
+        it "assigns full slice" do
+          @x[INF] = @v
+          expect(@x.value).to eq(@v)
+        end
+
+        it "assigns subarray" do
+          @x[0] = @v[0] = [nil, 3e45, Float::INFINITY, nil]
+          expect(@x.value).to eq(@v)
+
+          @x[1] = @v[1] = [-11.25, 3.355e301, -0.000002, nil]
+          expect(@x.value).to eq(@v)
+        end
+
+        it "assigns single values" do
+          2.times do |i|
+            4.times do |j|
+              @x[i][j] = @v[i][j] = -325.99 * i + j
+            end
+          end
+
+          expect(@x.value).to eq(@v)
+        end
+
+        it "supports assignment by tuple indexing" do
+          2.times do |i|
+            4.times do |j|
+              @x[i, j] = @v[i][j] = -8.33e1 * i + j
+            end
+          end
+
+          expect(@x.value).to eq(@v)
+        end
+      end # context optional data
+    end # context FixedDim
 
     context "Fortran" do
+      context "full data" do
+        before do
+          @x = XND.empty "!2 * 4 * float64"
+          @v = [[0.0, 1.0, 2.0, 3.0], [4.0, 5.0, 6.0, 7.0]]
+        end
+
+        it "assigns full slice" do
+          @x[INF] = @v
+          expect(@x.value).to eq(@v)
+        end
+
+        it "assigns subarray" do
+          @x[0] = @v[0] = [1.2, -3e45, Float::INFINITY, -322.25]
+          expect(@x.value).to eq(@v)
+
+          @x[1] = @v[1] = [-11.25, 3.355e301, -0.000002, -5000.2]
+          expect(@x.value).to eq (@v)
+        end
+
+        it "assigns single values" do
+          0.upto(1) do |i|
+            0.upto(3) do |j|
+              @x[i][j] = @v[i][j] = 3.22 * i + j
+            end
+          end
+
+          expect(@x.value).to eq(@v)
+        end
+
+        it "supports tuple indexing" do
+          0.upto(1) do |i|
+            0.upto(3) do |j|
+              @x[i, j] = @v[i][j] = -3.002e1 * i + j
+            end
+          end
+
+          expect(@x.value).to eq(@v)
+        end        
+      end # context full data
+
+      context "optional data" do
+        before do
+          @x = XND.empty "!2 * 4 * ?float64"
+          @v = [[10.0, nil, 2.0, 100.12], [nil, nil, 6.0, 7.0]]     
+        end
+
+        it "assigns full slice" do
+          @x[INF] = @v
+          expect(@x.value).to eq(@v)
+        end
+
+        it "assigns subarray" do
+          @x[0] = @v[0] = [nil, 3e45, Float::INFINITY, nil]
+          expect(@x.value).to eq(@v)
+
+          @x[1] = @v[1] = [-11.25, 3.355e301, -0.000002, nil]
+          expect(@x.value).to eq(@v)
+        end
+
+        it "assigns single values" do
+          2.times do |i|
+            4.times do |j|
+              @x[i][j] = @v[i][j] = -325.99 * i + j
+            end
+          end
+
+          expect(@x.value).to eq(@v)
+        end
+
+        it "supports assignment by tuple indexing" do
+          2.times do |i|
+            4.times do |j|
+              @x[i, j] = @v[i][j] = -8.33e1 * i + j
+            end
+          end
+
+          expect(@x.value).to eq(@v)
+        end
+      end # context optional data
+    end # context Fortran
+
+    context "VarDim" do
+      context "regular data" do
+        before do
+          @x = XND.empty "var(offsets=[0,2]) * var(offsets=[0,2,5]) * float64"
+          @v = [[0.0, 1.0], [2.0, 3.0, 4.0]]
+        end
+
+        it "assigns full slice" do
+          @x[INF] = @v
+          expect(@x.value).to eq(@v)
+        end
+
+        it "assigns subarray" do
+          @x[0] = @v[1] = [1.2, 2.5]
+          expect(@x.value).to eq(@v)
+
+          @x[1] = @v[1] = [1.2, 2.5, 3.99]
+          expect(@x.value).to eq(@v)
+        end
+
+        it "assigns individual values" do
+          2.times do |i|
+            @x[0][i] = @v[0][i] = 100.0 * i
+          end
+
+          3.times do |i|
+            @x[1][i] = @v[1][i] = 200.0 * i
+          end
+
+          expect(@x.value).to eq(@v)
+        end
+
+        it "assigns tuple" do
+          2.times do |i|
+            @x[0, i] = @v[0][i] = 300.0 * i + 1.222
+          end
+
+          3.times do |i|
+            @x[1, i] = @v[1][i] = 400.0 * i + 1.333
+          end
+
+          expect(@x.value).to eq(@v)
+        end
+      end # context regular data
+
+      context "optional data" do
+        before do
+          @x = XND.empty "var(offsets=[0,2]) * var(offsets=[0,2,5]) * ?float64"
+          @v = [[0.0, nil], [nil, 3.0, 4.0]]
+        end
+
+        it "assigns full slice" do
+          @x[INF] = @v
+          expect(@x.value).to eq(@v)
+        end
+
+        it "assigns subarray" do
+          @x[0] = @v[1] = [nil, 2.0]
+          expect(@x.value).to eq(@v)
+
+          @x[1] = @v[1] = [1.22214, nil, 10.0]
+          expect(@x.value).to eq(@v)
+        end
+
+        it "assigns individual values" do
+          2.times do |i|
+            @x[0][i] = @v[0][i] = 3.14 * i + 1.2222
+          end
+
+          3.times do |i|
+            @x[1][i] = @v[1][i] = 23.333 * i
+          end
+
+          expect(@x.value).to eq(@v)
+        end
+
+        it "assigns tuple" do
+          2.times do |i|
+            @x[0, i] = @v[0][i] = -122.5 * i + 1.222
+          end
+
+          3.times do |i|
+            @x[1, i] = @v[1][i] = -3e22 * i
+          end
+
+          expect(@x.value).to eq(@v)
+        end
+      end # context optional data
+    end # context VarDim
+
+    context "Tuple" do
+      context "regular data" do
+        before do
+          @x = XND.empty "(complex64, bytes, string)"
+          @v = [1+20i, "abc".b, "any"]          
+        end
+
+        it "assigns each element" do
+          @x[0] = @v[0]
+          @x[1] = @v[1]
+          @x[2] = @v[2]
+
+          expect(@x.value).to eq(@v)
+        end
+      end # context regular data
+
+      context "optional data" do
+        before do
+          @x = XND.empty "(complex64, ?bytes, ?string)"
+          @v = [1+20i, nil, "Some"]          
+        end
+
+        it "assigns each element" do
+          @x[0] = @v[0]
+          @x[1] = @v[1]
+          @x[2] = @v[2]
+
+          expect(@x.value).to eq(@v)          
+        end
+
+        it "assigns new each element" do
+          v = [-2.5+125i, nil, nil]
+          @x[0] = v[0]
+          @x[1] = v[1]
+          @x[2] = v[2]
+
+          expect(@x.value).to eq(v)
+        end
+
+        it "assigns tuple and individual values" do
+          x = XND.new([
+                        XND::T.new("a", 100, 10.5),
+                        XND::T.new("a", 100, 10.5)
+                      ])
+          x[0][1] = 200000000
+
+          expect(x[0][1]).to eq(200000000)
+          expect(x[0, 1]).to eq(200000000)
+        end
+      end # context optional data
+    end # context Tuple
+
+    context "Record" do
+      it "assigns regular data" do
+        x = XND.empty "{x: complex64, y: bytes, z: string}"
+        v = { 'x' => 1+20i, 'y' => "abc".b, 'z' => "any" }
+
+        x['x'] = v['x']
+        x['y'] = v['y']
+        x['z'] = v['z']
+
+        expect(x.value).to eq(v)
+      end
+
+      context "optional data" do
+        before do
+          @x = XND.empty "{x: complex64, y: ?bytes, z: ?string}"
+        end
+
+        [
+          { 'x' => 1+20i, 'y' => nil, 'z' => "Some"  },
+          { 'x' => -2.5+125i, 'y' => nil, 'z' => nil }
+        ].each do |v|
+          it "assigns optional data #{v}" do
+            
+            @x['x'] = v['x']
+            @x['y'] = v['y']
+            @x['z'] = v['z']
+            
+            expect(@x.value).to eq(v)
+          end
+        end
+
+        it "assigns tuple or individual" do
+          x = XND.new({'x' => "abc", 'y' => nil, 'z' => nil })
+          x[0][1] = 2000000
+
+          expect(x[0][1]).to eq(200000)
+          expect(x[0, 1]).to eq(200000)
+        end
+      end # context optional data
+    end # context Record
+
+    context "Ref" do
+      # TODO: see line 1341 of pycode.
+    end
+
+    context "Constr" do
+      # TODO: see line 1484
+    end
+
+    context "Nominal" do
+      # TODO: see line 1637
+    end
+
+    context "Categorical" do
       before do
-        @x = XND.empty "!2 * 4 * float64"
-        @v = [[0.0, 1.0, 2.0, 3.0], [4.0, 5.0, 6.0, 7.0]]
+        @s = "2 * categorical(NA, 'January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December')"
+        @x = XND.new [nil, nil], type: @s
       end
       
-      it "full slice" do
-        @x[INF] = @v
+      it "assigns regular data" do
+        @x[0] = "August"
+        @x[1] = "December"
 
-        expect(@x.value).to eq(@v)
+        expect(@x.value).to eq(["August", "December"])
       end
-    end
-  end
+
+      it "assigns nil" do
+        @x[0] = nil
+
+        expect(@x.value).to eq([nil, "December"])
+      end
+    end # context Categorical
+
+    context "FixedString" do
+      it "assigns a fixed string" do
+        t = "2 * fixed_string(3, 'utf32')"
+        v = ["\U00011111\U00022222\U00033333", "\U00011112\U00022223\U00033334"]
+        x = XND.new(v, type: t)
+
+        x[0] = "a"
+        expect(x.value).to eq(["a", "\U00011112\U00022223\U00033334"])
+
+        x[0] = "a\x00\x00"
+        expect(x.value).to eq(["a", "\U00011112\U00022223\U00033334"])
+
+        x[1] = "b\x00c"
+        expect(x.value).to eq(["a", "b\x00c"])
+      end
+    end # context FixedString
+
+    context "FixedBytes" do
+      it "assign single element" do
+        t = "2 * fixed_bytes(size=3, align=1)"
+        v = ["abc".b, "123".b]
+        x = XND.new(v, type: t)
+        
+        x[0] = "xyz".b
+        expect(@x.value).to eq(["xyz".b, "123".b])
+      end
+    end # context FixedString
+
+    context "String" do
+      it "assigns single" do
+        t = '2 * {a: complex128, b: string}'
+        x = XND.new([{ 'a' => 2+3i, 'b' => "thisguy"},
+                     { 'a' => 1+4i, 'b' => "thatguy" }], type: t)
+
+        x[0] = { 'a' => 220i, 'b' => 'y'}
+        x[1] = { 'a' => -12i, 'b' => 'z'}
+
+        expect(x.value).to eq([
+                                { 'a' => 220i, 'b' => 'y' },
+                                { 'a' => -12i, 'b' => 'z' }
+                              ])
+      end
+    end # context String
+
+    context "Bytes" do
+      it "assigns bytes by tuple" do
+        t = "2 * SomeByteArray(3 * bytes)"
+        inner = ["a".b, "b".b, "c".b]
+        v = [inner] * 2
+        x = XND.new v, type: t
+
+        2.times do |i|
+          3.times do |k|
+            x[i, k] = inner[k] = ['x'.chr.ord + k].pack("A")
+          end
+        end
+
+        expect(x.value).to eq(v)
+      end
+    end # context Bytes
+  end # context #[]=
   
   context "#strict_equal" do
     context "FixedDim" do
