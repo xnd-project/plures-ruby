@@ -267,13 +267,15 @@ get_int(VALUE data, int64_t min, int64_t max)
 
 static uint64_t
 get_uint(VALUE data, uint64_t max)
-{
-  unsigned long long x;
+{ 
+  unsigned long long x = NUM2ULL(data);
 
-  x = NUM2ULL(data);
-
+  if (x == (unsigned long long)-1) {
+    rb_raise(rb_eRangeError, "cannot assigned negative number to unsigned type.");
+  }
+  
   if (x > max) {
-    rb_raise(rb_eArgError, "number out of range: %ulld", x);
+    rb_raise(rb_eRangeError, "number out of range: %ulld", x);
   }
 
   return x;
@@ -545,7 +547,6 @@ mblock_init(xnd_t * const x, VALUE data)
   }
 
   case Float64: {
-    int i;
     double temp = NUM2DBL(data);
     return rb_xnd_pack_float64(temp, (unsigned char*)x->ptr, le(t->flags));
   }
@@ -1199,7 +1200,7 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
   }
 
   case Float32: {
-    double temp = 0.0;
+    float temp = 0.0;
 
     rb_xnd_unpack_float32(&temp, (unsigned char*)x->ptr, le(t->flags));
     return DBL2NUM(temp);
@@ -1217,7 +1218,7 @@ _XND_value(const xnd_t * const x, const int64_t maxshape)
   }
 
   case Complex64: {
-    double real = 0.0, imag = 0.0;
+    float real = 0.0, imag = 0.0;
 
     rb_xnd_unpack_float32(&real, (unsigned char*)x->ptr, le(t->flags));
     rb_xnd_unpack_float32(&imag, (unsigned char*)x->ptr+4, le(t->flags));

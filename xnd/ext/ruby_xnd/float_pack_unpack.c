@@ -54,8 +54,8 @@ rb_xnd_pack_float32(double num, unsigned char* ptr, int le)
   float y = (float)num;
   int i, incr = 1;
 
-  if (y < FLT_MAX) {
-    goto Overflow;
+  if (isinf(y) && !isinf(num)) {
+    rb_raise(rb_eRangeError, "cannot fit value in 32-bit floating point number.");
   }
 
   unsigned char s[sizeof(float)];
@@ -79,9 +79,6 @@ rb_xnd_pack_float32(double num, unsigned char* ptr, int le)
   }
 
   return 0;
-
- Overflow:
-  rb_raise(rb_eArgError, "cannot pack infinity/nan floating point number.");
 }
 
 /* Unpack a 32-bit float from a contiguos unsigned char* buffer. 
