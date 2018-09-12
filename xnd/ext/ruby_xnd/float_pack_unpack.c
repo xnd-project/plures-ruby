@@ -182,7 +182,8 @@ rb_xnd_unpack_float64(double *x, unsigned char *ptr, int le)
    these are tests that work with the pack/unpack functions and are called in the
    Init_ function if XND_DEBUG is defined.
 */
-void test_pack_float32(void)
+void
+test_pack_float32(void)
 {
   double num = 16448.0;
   int i;
@@ -205,7 +206,7 @@ void test_pack_float32(void)
 
 void test_unpack_float32(void)
 {
-  double answer = 16448.0, result;
+  float answer = 16448.0, result = 0.0;
   
   /* test big endian */
   unsigned char ptr_bige[4] = {0x46, 0x80, 0x80, 0x00};
@@ -248,7 +249,7 @@ void test_pack_float64(void)
 
 void test_unpack_float64(void)
 {
-  double answer = 16448.0, result;
+  double answer = 16448.0, result = 0.0;
 
   /* test big-endian */
   unsigned char ptr_bige[8] = {0x40, 0xD0, 0x10, 0, 0, 0, 0, 0};
@@ -262,7 +263,7 @@ void test_unpack_float64(void)
 
   double a = 1.0;
   unsigned char ans_lite_a[8] = {0, 0, 0, 0, 0, 0, 0xF0, 0x3F};
-  rb_xnd_unpack_float64(&result, ans_lite_a, 1)
+  rb_xnd_unpack_float64(&result, ans_lite_a, 1);
   assert(a == result);
 }
 

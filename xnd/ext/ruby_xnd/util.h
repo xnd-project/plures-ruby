@@ -151,7 +151,7 @@ rb_range_unpack(VALUE range, long long *begin, long long *end, long long *step, 
  else {
    long long temp = NUM2LL(rb_end);
 
-   if (temp < 0) {              /* if negative index map to positive. */
+   if (temp < 0) {              /* if negative index map to ppositive. */
      temp = mod(temp, (long long)size);
    }
    

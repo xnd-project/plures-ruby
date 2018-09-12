@@ -9,6 +9,16 @@ def run *cmd
   sh(cmd.join(" "))
 end
 
+task :console do
+  cmd = ['irb', "-r './lib/xnd.rb'"]
+  run(*cmd)
+end
+
+task :pry do
+  cmd = ['pry', "-r './lib/xnd.rb'"]
+  run(*cmd)
+end
+
 BASEDIR = Pathname( __FILE__ ).dirname.relative_path_from( Pathname.pwd )
 SPECDIR = BASEDIR + 'spec'
 

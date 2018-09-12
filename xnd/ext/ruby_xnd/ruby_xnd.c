@@ -57,6 +57,15 @@ seterr(ndt_context_t *ctx)
   return rb_ndtypes_set_error(ctx);
 }
 
+#ifdef XND_DEBUG
+void
+obj_inspect(const char* msg, VALUE obj)
+{
+  VALUE insp = rb_funcall(obj, rb_intern("inspect"), NULL, 0);
+  printf("%s %s\n.", msg, StringValuePtr(insp));
+}
+#endif
+
 /****************************************************************************/
 /*                           Singletons                                     */
 /****************************************************************************/
@@ -957,7 +966,7 @@ XND_get_size(VALUE xnd)
   VALUE rb_size;
 
   rb_size = rb_protect(XND_size, xnd, &state);
-  size = state ? 1 : NUM2LL(rb_size);
+  size = state ? 0 : NUM2LL(rb_size);
 
   return size;
 }
@@ -1414,6 +1423,10 @@ convert_single(xnd_index_t *key, VALUE obj, size_t size)
     return KEY_FIELD;
   }
   else if (CLASS_OF(obj) == rb_cRange) {
+    if (size == 0) {
+      rb_raise(rb_eIndexError, "Cannot use Range on this type.");
+    };
+    
     size_t begin, end, step;
 
     rb_range_unpack(obj, &begin, &end, &step, size);

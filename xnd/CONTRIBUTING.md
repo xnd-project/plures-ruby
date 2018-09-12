@@ -43,3 +43,10 @@ ranges for references arrays:
 
 * Full range (`0..Float::INFINITY`) : `INF`.
 * Part range (`4..Float::INFINITY`) : `4..INF`.
+
+# Roadmap
+
+Short term goals:
+
+* Complete support for XND, NDT and gumath.
+* Refactor rspecs to be more 'ruby-like'.

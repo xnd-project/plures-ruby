@@ -255,7 +255,7 @@ describe XND do
       it "creates new String array" do
         t = '2 * {a: complex128, b: string}'
         x = XND.new([{'a' => 2+3i, 'b' => "thisguy"},
-                    {'a' => 1+4i, 'b' => "thatguy"}], type: t)
+                     {'a' => 1+4i, 'b' => "thatguy"}], type: t)
 
         expect(x[0]['b'].value).to eq("thisguy")
         expect(x[1]['b'].value).to eq("thatguy")
@@ -638,7 +638,7 @@ describe XND do
           it "type: #{ss}" do
             t = NDT.new ss
             x = XND.empty ss
-          
+            
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
             expect(x.size).to eq(vv.size)       
@@ -661,7 +661,7 @@ describe XND do
           it "type: #{ss}" do
             t = NDT.new ss
             x = XND.empty ss
-                      
+            
             expect(x.type).to eq(t)
             expect(x.value).to eq(vv)
             expect(x.size).to eq(vv.size)
@@ -883,7 +883,7 @@ describe XND do
         expect(x.value).to eq('')
       end
 
-      it "tests for multiple values" do
+      xit "tests for multiple values" do
         t = NDT.new "10 * string"
         x = XND.empty t
 
@@ -1047,9 +1047,9 @@ describe XND do
       [
         [
           [
-           [11.12-2.3i, -1222+20e8i],
-           [Complex(Float::INFINITY, Float::INFINITY), -0.00002i],
-           [0.201+1i, -1+1e301i]
+            [11.12-2.3i, -1222+20e8i],
+            [Complex(Float::INFINITY, Float::INFINITY), -0.00002i],
+            [0.201+1i, -1+1e301i]
           ], "3 * 2 * complex128"],
         [
           [
@@ -1173,9 +1173,9 @@ describe XND do
         # the ref should work transparently. However for now it returns an XND object.
         # This will likely change in the future.
         @inner = [['a', 'b', 'c', 'd', 'e'],
-                 ['f', 'g', 'h', 'i', 'j'],
-                 ['k', 'l', 'm', 'n', 'o'],
-                 ['p', 'q', 'r', 's', 't']]
+                  ['f', 'g', 'h', 'i', 'j'],
+                  ['k', 'l', 'm', 'n', 'o'],
+                  ['p', 'q', 'r', 's', 't']]
         @v = [[@inner] * 3] * 2
         @x = XND.new(@v, type: "2 * 3 * ref(4 * 5 * string)")
       end
@@ -1200,9 +1200,9 @@ describe XND do
         # the constructor should work transparently. However, for now it returns
         # an XND object, however this will likely change in the future.
         @inner = [['a', 'b', 'c', 'd', 'e'],
-                 ['f', 'g', 'h', 'i', 'j'],
-                 ['k', 'l', 'm', 'n', 'o'],
-                 ['p', 'q', 'r', 's', 't']]
+                  ['f', 'g', 'h', 'i', 'j'],
+                  ['k', 'l', 'm', 'n', 'o'],
+                  ['p', 'q', 'r', 's', 't']]
         @v = [[@inner] * 3] * 2
         @x = XND.new(@v, type: "2 * 3 * InnerArray(4 * 5 * string)")
       end
@@ -1229,9 +1229,9 @@ describe XND do
         # object, however this will likely change in the future.
         NDT.typedef("inner", "4 * 5 * string")
         @inner = [['a', 'b', 'c', 'd', 'e'],
-                 ['f', 'g', 'h', 'i', 'j'],
-                 ['k', 'l', 'm', 'n', 'o'],
-                 ['p', 'q', 'r', 's', 't']]
+                  ['f', 'g', 'h', 'i', 'j'],
+                  ['k', 'l', 'm', 'n', 'o'],
+                  ['p', 'q', 'r', 's', 't']]
         @v = [[@inner] * 3] * 2
         @x = XND.new(@v, type: "2 * 3 * inner")        
       end
@@ -1817,24 +1817,22 @@ describe XND do
                 end
               end              
             end
-              
-            it "unless w.nil?", focus: true do
+            
+            it "unless w.nil?" do
               if tt == "2 * 2 * {x: uint16, y: {z: ?complex64}}" &&
                  uu == "2 * 2 * {x: uint16, y: {z: ?complex64}}"
-                 x = XND.new vv, type: @ttt
+                x = XND.new vv, type: @ttt
 
-                 unless w.nil?
-                   y = XND.new vv, type: @ttt
+                unless w.nil?
+                  y = XND.new vv, type: @ttt
 
-                   puts "w :: #{w}"
-                   puts "indices :: #{indices}"
-                   y[*indices] = w
-                   expect_strict_unequal x, y
-                   
-                   y = XND.new vv, type: @uuu
-                   y[*indices] = w
-                   expect_strict_unequal x, y
-                 end
+                  y[*indices] = w
+                  expect_strict_unequal x, y
+                  
+                  y = XND.new vv, type: @uuu
+                  y[*indices] = w
+                  expect_strict_unequal x, y
+                end
               end
             end
           end
@@ -2018,7 +2016,7 @@ describe XND do
             y[i, k] = 100
 
             expect_strict_unequal x, y
-              
+            
             y[i, k] = v
           end
         end
@@ -2081,7 +2079,7 @@ describe XND do
           [[[v], [v]], "var(offsets=[0,2]) * var(offsets=[0,1,2]) * #{t}",
            "var(offsets=[0,2]) * var(offsets=[0,1,2]) * #{u}", [1, 0]],
           [[[v], [v] * 2, [v] * 5], "var(offsets=[0,3]) * var(offsets=[0,1,3,8]) * #{t}",
-         "var(offsets=[0,3]) * var(offsets=[0,1,3,8]) * #{u}", [2, 3]]
+           "var(offsets=[0,3]) * var(offsets=[0,1,3,8]) * #{u}", [2, 3]]
         ].each do |vv, tt, uu, indices|
           it "tests for type tt=#{tt}" do
             ttt = NDT.new tt
@@ -2120,6 +2118,197 @@ describe XND do
     end # context VarDim
 
     context "Tuple" do
+      context "simple test" do
+        before do
+          @x = XND.new XND::T.new(1, 2.0, "3", "123".b)
+        end
+        
+        it "checks simple equality" do  
+          expect_strict_equal @x, XND.new(XND::T.new(1, 2.0, "3", "123".b))
+        end
+
+        it "checks simple inequality" do
+          expect_strict_unequal @x, XND.new(XND::T.new(2, 2.0, "3", "123".b))
+          expect_strict_unequal @x, XND.new(XND::T.new(1, 2.1, "3", "123".b))
+          expect_strict_unequal @x, XND.new(XND::T.new(1, 2.0, "", "123".b))
+          expect_strict_unequal @x, XND.new(XND::T.new(1, 2.0, "345", "123".b))
+          expect_strict_unequal @x, XND.new(XND::T.new(1, 2.0, "3", "".b))
+          expect_strict_unequal @x, XND.new(XND::T.new(1, 2.0, "3", "12345".b))
+        end
+      end # context simple test
+
+      context "nested structures" do
+        before do
+          @t = "
+            (uint8,
+             fixed_string(100, 'utf8'),
+              (complex128,
+               2 * 3 * (fixed_bytes(size=64, align=32), bytes)),
+             ref(string))
+            "
+
+          @v = [
+            10,
+            "\u00001234\u00001001abc",
+            [
+              12.1e244+3i,
+              [[
+                 ["123".b, "22".b * 10],
+                 ["123456".b, "23".b * 10],
+                 ["123456789".b, "24".b * 10]
+               ],
+               [
+                 ["1".b, "a".b],
+                 ["12".b, "ab".b],
+                 ["123".b, "abc".b]
+               ]]],
+            "xyz"
+          ]
+
+          @x = XND.new @v, type: @t
+          @y = XND.new @v, type: @t
+        end # before
+
+        it "simple equality" do
+          expect_strict_equal @x, @y
+        end
+
+        it "unequal after assignment" do
+          w = @y[0].value
+          @y[0] = 11
+
+          expect_strict_unequal @x, @y
+        end
+
+        it "equal after assignment" do
+          w = @y[0].value
+          @y[0] = w
+
+          expect_strict_equal @x, @y
+        end
+
+        it "unequal after UTF-8 assign" do
+          w = @y[1].value
+          @y[1] = "\U00001234\U00001001abx"
+
+          expect_strict_unequal @x, @y
+
+          @y[1] = w
+          expect_strict_equal @x, @y
+        end
+
+        it "equal after tuple assign" do
+          w = @y[2,0].value
+          @y[2,0] = 12.1e244-3i
+          expect_strict_unequal @x, @y
+
+          @y[2,0] = w
+          expect_strict_equal @x, @y
+        end
+
+        it "assigns large index value" do
+          w = @y[2,1,1,2,0].value
+          @y[2,1,1,2,0] = "abc".b
+          expect_strict_unequal @x, @y
+
+          @y[2,1,1,2,0] = w
+          expect_strict_equal @x, @y
+        end
+
+        it "assign empty string" do
+          w = @y[3].value
+          @y[3] = ""
+          expect_strict_unequal @x, @y
+
+          @y[3] = w
+          expect_strict_equal @x, @y
+        end
+      end # context nested structures
+
+      context "simple corner cases" do
+        EQUAL_TEST_CASES.each do |struct|
+          v = struct.v
+          t = struct.t
+          u = struct.u
+
+          [
+            [[[v] * 0], "(0 * #{t})", "(0 * #{u})"],
+            [[[[v] * 0]], "((0 * #{t}))", "((0 * #{u}))"]
+          ].each do |vv, tt, uu|
+            before do
+              @uu = uu
+              @vv = vv
+              @tt = tt
+              @ttt = NDT.new tt
+              @uuu = NDT.new tt # uu?
+              @x = XND.new vv, type: @ttt
+              @y = XND.new(vv, type: @ttt)
+            end
+
+            it "equals same type object. tt=\"#{tt}\". uu=\"#{uu}\"." do             
+              expect_strict_equal @x, @y
+            end
+            
+
+            it "equals other type object. tt=\"#{tt}\". uu=\"#{uu}\"." do
+              y = XND.new @vv, type: @uuu
+              expect_strict_equal @x, y
+            end
+          end
+        end
+      end # context simple corner cases
+
+      it "tests complex corner cases" do
+        EQUAL_TEST_CASES.each do |struct|
+          v = struct.v
+          t = struct.t
+          u = struct.u
+          w = struct.w
+          eq = struct.eq
+
+          [
+            [[v], "(#{t})", "(#{u})", [0]],
+            [[[v]], "((#{t}))", "(#{u})", [0, 0]],
+            [[[[v]]], "(((#{t})))", "(((#{u})))", [0, 0, 0]],
+
+            [[[v] * 1], "(1 * #{t})", "(1 * #{u})", [0, 0]],
+            [[[[v] * 1]], "((1 * #{t}))", "((1 * #{u}))", [0, 0, 0]],
+            [[[v] * 3], "(3 * #{t})", "(3 * #{u})", [0, 2]]
+          ].each do |vv, tt, uu, indices|
+            ttt = NDT.new tt
+            uuu = NDT.new tt
+            x = XND.new vv, type: ttt
+
+            y = XND.new vv, type: ttt
+            if eq
+              expect_strict_equal x, y
+            else
+              expect_strict_unequal x, y
+            end
+
+            unless u.nil?
+              y = XND.new vv, type: uuu
+              if eq
+                expect_strict_equal x, y
+              else
+                expect_strict_unequal x, y
+              end
+            end
+
+            unless w.nil?
+              y = XND.new vv, type: ttt
+              y[*indices] = w
+              expect_strict_unequal x, y
+
+              y = XND.new vv, type: uuu
+              y[*indices] = w
+              expect_strict_unequal x, y
+            end
+          end
+        end
+      end # context "Tuple"
+    end
+    context "Record" do
       
     end
 
@@ -2162,7 +2351,7 @@ describe XND do
     it "returns String representation" do
       
     end
-  end
+  end # context to_s
 
   context "#size" do
     context "FixedDim" do
@@ -2171,7 +2360,7 @@ describe XND do
         expect(x.size).to eq(5)
       end
     end
-  
+    
     context "Bool" do
       it "raises error" do
         x = XND.new true, type: "bool"
@@ -2194,7 +2383,7 @@ describe XND do
         expect { x.size }.to raise_error(NoMethodError)
       end
     end
-  end
+  end # context #size
 
   context "#each" do
     context "FixedDim" do
@@ -2208,6 +2397,5 @@ describe XND do
         expect(sum).to eq(15)
       end
     end
-  end
+  end # context #each
 end
-
