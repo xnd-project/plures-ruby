@@ -149,7 +149,7 @@ class XND < RubyXND
         elsif value.is_a? Integer
           ret = 'int64'
         elsif value.is_a? String
-          ret = value.encoding == Encoding::ASCII ? 'bytes' : 'string'
+          ret = value.encoding == Encoding::ASCII_8BIT ? 'bytes' : 'string'
         else
           raise ArgumentError, "cannot infer data type for: #{value}"
         end

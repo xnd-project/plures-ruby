@@ -281,6 +281,7 @@ get_uint(VALUE data, uint64_t max)
   return x;
 }
 
+/* Initialize an mblock object with data. */
 static int
 mblock_init(xnd_t * const x, VALUE data)
 {
@@ -725,9 +726,8 @@ mblock_init(xnd_t * const x, VALUE data)
 
   case Categorical: {
     int64_t k;
-
-    switch (TYPE(data)) {
-    case T_TRUE: case T_FALSE: {
+    
+    if (RB_TYPE_P(data, T_TRUE) || RB_TYPE_P(data, T_FALSE)) {
       int temp = RTEST(data);
 
       for (k = 0; k < t->Categorical.ntypes; k++) {
@@ -737,10 +737,8 @@ mblock_init(xnd_t * const x, VALUE data)
           return 0;
         }
       }
-      goto not_found;
     }
-
-    case T_FIXNUM: {
+    else if (RB_TYPE_P(data, T_FIXNUM)) {
       int64_t temp = get_int(data, INT64_MIN, INT64_MAX);
 
       for (k = 0; k < t->Categorical.ntypes; k++) {
@@ -750,11 +748,8 @@ mblock_init(xnd_t * const x, VALUE data)
           return 0;
         }
       }
-
-      goto not_found;
     }
-
-    case T_FLOAT: {
+    else if (RB_TYPE_P(data, T_FLOAT)) {
       double temp = NUM2DBL(data);
 
       for (k = 0; k < t->Categorical.ntypes; k++) {
@@ -764,11 +759,9 @@ mblock_init(xnd_t * const x, VALUE data)
           return 0;
         }
       }
-
-      goto not_found;
     }
-    case T_STRING: {
-      const char *temp = RSTRING_PTR(data);
+    else if (RB_TYPE_P(data, T_STRING)) {
+      const char *temp = StringValuePtr(data);
 
       for (k = 0; k < t->Categorical.ntypes; k++) {
         if (t->Categorical.types[k].tag == ValString &&
@@ -777,20 +770,16 @@ mblock_init(xnd_t * const x, VALUE data)
           return 0;
         }
       }
-
-      goto not_found;
     }
-
-    not_found:
-      for (k = 0; k < t->Categorical.ntypes; k++) {
-        if (t->Categorical.types[k].tag == ValNA) {
-          PACK_SINGLE(x->ptr, k, int64_t, t->flags);
-          return 0;
-        }
+    
+    for (k = 0; k < t->Categorical.ntypes; k++) {
+      if (t->Categorical.types[k].tag == ValNA) {
+        PACK_SINGLE(x->ptr, k, int64_t, t->flags);
+        return 0;
       }
-
-      rb_raise(rb_eValueError, "category not found.");
     }
+
+    rb_raise(rb_eValueError, "category not found.");
   }
 
   case Char: {
@@ -960,6 +949,18 @@ RubyXND_initialize(VALUE self, VALUE type, VALUE data)
   return self;
 }
 
+static size_t
+XND_get_size(VALUE xnd)
+{
+  size_t size;
+  int state;
+  VALUE rb_size;
+
+  rb_size = rb_protect(XND_size, xnd, &state);
+  size = state ? 1 : NUM2LL(rb_size);
+
+  return size;
+}
 
 /*************************** object properties ********************************/
 
@@ -1489,8 +1490,7 @@ XND_array_aref(int argc, VALUE *argv, VALUE self)
   }
 
   GET_XND(self, xnd_p);
-  rb_size = rb_protect(XND_size, self, &state);
-  size = state ? 1 : NUM2LL(rb_size);
+  size = XND_get_size(self);
   
   flags = convert_key(indices, &len, argc, argv, size);
   if (flags & KEY_ERROR) {
@@ -1662,6 +1662,69 @@ XND_size(VALUE self)
   return ULL2NUM(_XND_size(XND(self_p)));
 }
 
+/* Implement #[]= */
+static VALUE
+XND_array_store(int argc, VALUE *argv, VALUE self)
+{
+  NDT_STATIC_CONTEXT(ctx);
+  xnd_index_t indices[NDT_MAX_DIM];
+  xnd_t x;
+  int free_type = 0, ret, len;
+  uint8_t flags;
+  XndObject *self_p, *value_p;
+  MemoryBlockObject *self_mblock_p;
+  size_t size;
+  VALUE value;
+
+  if (argc < 2) {
+    rb_raise(rb_eArgError, "wrong number of arguments (given %d expected atleast 2)."
+             , argc);
+  }
+
+  GET_XND(self, self_p);
+  
+  size = XND_get_size(self);
+  flags = convert_key(indices, &len, argc-1, argv, size);
+  if (flags & KEY_ERROR) {
+    rb_raise(rb_eIndexError, "wrong kind of key in []=");
+  }
+
+  if (flags & KEY_SLICE) {
+    x = xnd_multikey(&self_p->xnd, indices, len, &ctx);
+    free_type = 1;
+  }
+  else {
+    x = xnd_subtree(&self_p->xnd, indices, len, &ctx);
+  }
+
+  if (x.ptr == NULL) {
+    seterr(&ctx);
+    raise_error();
+  }
+
+  value = argv[argc-1];
+
+  if (XND_CHECK_TYPE(value)) {
+    GET_XND(value, value_p);
+    GET_MBLOCK(self_p->mblock, self_mblock_p);
+    
+    ret = xnd_copy(&x, XND(value_p), self_mblock_p->xnd->flags, &ctx);
+    if (ret < 0) {
+      seterr(&ctx);
+      raise_error();
+    }
+  }
+  else {
+    ret = mblock_init(&x, value);
+  }
+
+  if (free_type) {
+    ndt_del((ndt_t *)x.type);
+  }
+
+  return value;
+}
+
 /* Implement XND#each */
 static VALUE
 XND_each(VALUE self)
@@ -1733,7 +1796,9 @@ void Init_ruby_xnd(void)
   rb_define_method(cXND, "type", XND_type, 0);
   rb_define_method(cXND, "value", XND_value, 0);
   rb_define_method(cXND, "[]", XND_array_aref, -1);
+  rb_define_method(cXND, "[]=", XND_array_store, -1);
   rb_define_method(cXND, "==", XND_eqeq, 1);
+  //  rb_define_method(cXND, "!=", XND_neq, 1);
   rb_define_method(cXND, "<=>", XND_spaceship, 1);
   rb_define_method(cXND, "strict_equal", XND_strict_equal, 1);
   rb_define_method(cXND, "size", XND_size, 0);
