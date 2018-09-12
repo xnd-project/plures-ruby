@@ -499,8 +499,14 @@ describe XND do
             expect(x.size).to eq(vv.size)
           end
         end
-      end      
-    end
+      end
+
+      it "checks overflow for general case" do
+        expect {
+          XND.empty "2147483648 * 2147483648 * 2 * uint8"
+        }.to raise_error(ValueError)
+      end
+    end # context FixedDim
 
     context "VarDim" do
       DTYPE_EMPTY_TEST_CASES[0..10].each do |v, s|
@@ -1616,7 +1622,7 @@ describe XND do
         @x = XND.new [nil, nil], type: @s
       end
       
-      it "assigns regular data", focus: true do
+      it "assigns regular data" do
         @x[0] = "August"
         @x[1] = "December"
 
@@ -1727,7 +1733,7 @@ describe XND do
       it "tests slices" do
         x = XND.new([[1,2,3], [4,5,6], [7,8,9], [10,11,12]])
         y = XND.new([1,2,3])
-
+        
         expect_strict_equal x[0], y
 
         y = XND.new [1,4,7,10]
@@ -1735,15 +1741,398 @@ describe XND do
         expect_strict_equal x[0..Float::INFINITY,0], y
       end
 
-      it "tests corner cases and many dtypes" do
+      EQUAL_TEST_CASES.each do |struct|
+        v = struct.v
+        t = struct.t
+        u = struct.u
         
+        [
+          [[v] * 0, "0 * #{t}", "0 * #{u}"],
+          [[[v] * 0] * 0, "0 * 0 * #{t}", "0 * 0 * #{u}"],
+          [[[v] * 1] * 0, "0 * 1 * #{t}", "0 * 1 * #{u}"],
+          [[[v] * 0] * 1, "1 * 0 * #{t}", "1 * 0 * #{u}"]
+        ].each do |vv, tt, uu|
+          it "tests corner cases and many dtypes. type: #{tt}" do
+            ttt = NDT.new tt
+            uuu = NDT.new tt
+
+            x = XND.new vv, type: ttt
+
+            y = XND.new vv, type: ttt
+            expect_strict_equal x, y
+
+            y = XND.new vv, type: uuu
+            expect_strict_equal x, y
+          end
+        end
+      end # EQUAL_TEST_CASES.each
+
+      EQUAL_TEST_CASES.each do |struct|
+        v = struct.v
+        t = struct.t
+        u = struct.u
+        w = struct.w
+        eq = struct.eq
+        
+        [
+          [[v] * 1, "1 * #{t}", "1 * #{u}", [0]],
+          [[v] * 2, "2 * #{t}", "2 * #{u}", [1]],
+          [[v] * 1000, "1000 * #{t}", "1000 * #{u}", [961]],
+
+          [[[v] * 1] * 1, "1 * 1 * #{t}", "1 * 1 * #{u}", [0, 0]],
+          [[[v] * 2] * 1, "1 * 2 * #{t}", "1 * 2 * #{u}", [0, 1]],
+          [[[v] * 1] * 2, "2 * 1 * #{t}", "2 * 1 * #{u}", [1, 0]],
+          [[[v] * 2] * 2, "2 * 2 * #{t}", "2 * 2 * #{u}", [1, 1]],
+          [[[v] * 3] * 2, "2 * 3 * #{t}", "2 * 3 * #{u}", [1, 2]],
+          [[[v] * 2] * 3, "3 * 2 * #{t}", "3 * 2 * #{u}", [2, 1]],
+          [[[v] * 40] * 3, "3 * 40 * #{t}", "3 * 40 * #{u}", [1, 32]]
+        ].each do |vv, tt, uu, indices|
+          context "type: tt=\"#{tt}\" uu=\"#{uu}\"" do
+            before do
+              @ttt = NDT.new tt
+              @uuu = NDT.new tt # uu?
+            end
+
+            it "eq" do
+              x = XND.new vv, type: @ttt
+              y = XND.new vv, type: @ttt
+              
+              if eq
+                expect_strict_equal x, y
+              else
+                expect_strict_unequal x, y
+              end         
+            end
+
+            it "unless u.nil?" do
+              x = XND.new vv, type: @ttt
+
+              unless u.nil?
+                y = XND.new vv, type: @uuu
+
+                if eq
+                  expect_strict_equal x, y
+                else
+                  expect_strict_unequal x, y                  
+                end
+              end              
+            end
+              
+            it "unless w.nil?", focus: true do
+              if tt == "2 * 2 * {x: uint16, y: {z: ?complex64}}" &&
+                 uu == "2 * 2 * {x: uint16, y: {z: ?complex64}}"
+                 x = XND.new vv, type: @ttt
+
+                 unless w.nil?
+                   y = XND.new vv, type: @ttt
+
+                   puts "w :: #{w}"
+                   puts "indices :: #{indices}"
+                   y[*indices] = w
+                   expect_strict_unequal x, y
+                   
+                   y = XND.new vv, type: @uuu
+                   y[*indices] = w
+                   expect_strict_unequal x, y
+                 end
+              end
+            end
+          end
+        end
       end
     end # context FixedDim
 
-    context "Float32" do
+    context "Fortran" do
+      before do
+        @x = XND.new [1,2,3,4], type: "!4 * int64"
+      end
+      
+      it "test basic case" do
+        expect_strict_equal @x, XND.new([1,2,3,4], type: "!4 * int64")
+      end
+
+      it "tests different shape and/or data" do
+        expect_strict_unequal @x, XND.new([1,2,3,100], type: "!4 * int64")
+        expect_strict_unequal @x, XND.new([1,2,3], type: "!3 * int64")
+        expect_strict_unequal @x, XND.new([1,2,3,4,5], type: "!5 * int64")
+      end
+
+      it "tests different shapes" do
+        expect_strict_unequal @x, XND.new([1,2,3], type: "!3 * int64")
+        expect_strict_unequal @x, XND.new([[1,2,3,4]], type: "!1 * 4 * int64")
+        expect_strict_unequal @x, XND.new([[1,2], [3,4]], type: "!2 * 2 * int64")
+      end
+
+      it "tests simple multidimensional arrays" do
+        x = XND.new([[1,2,3], [4,5,6], [7,8,9], [10,11,12]], type: "!4 * 3 * int64")
+        y = XND.new([[1,2,3], [4,5,6], [7,8,9], [10,11,12]], type: "!4 * 3 * int64")
+
+        expect_strict_equal x, y
+      end
+
+      context "equality after assignment" do
+        x = XND.new([[1,2,3], [4,5,6], [7,8,9], [10,11,12]], type: "!4 * 3 * int64")
+        y = XND.new([[1,2,3], [4,5,6], [7,8,9], [10,11,12]], type: "!4 * 3 * int64")
+        4.times do |i|
+          3.times do |k|
+            v = y[i, k]
+            y[i, k] = 100
+
+            it "for i=#{i} k=#{k}" do
+              expect_strict_unequal x, y
+            end
+            y[i, k] = v
+          end
+        end
+      end # context equality after assignement
+
+      it "tests slices" do
+        x = XND.new([[1,2,3], [4,5,6], [7,8,9], [10,11,12]], type: "!4 * 3 * int64")
+        y = XND.new([[1,2,3], [4,5,6]])
+
+        expect_strict_equal x[0..1], y
+
+        y = XND.new([1,4,7,10], type: "!4 * int64")
+
+        expect_strict_equal x[INF, 0], y
+      end
+
+      EQUAL_TEST_CASES.each do |struct|
+        v = struct.v
+        t = struct.t
+        u = struct.u
+        
+        [
+          [[v] * 0, "!0 * #{t}", "!0 * #{u}"],
+          [[[v] * 0] * 0, "!0 * 0 * #{t}", "!0 * 0 * #{u}"],
+          [[[v] * 1] * 0, "!0 * 1 * #{t}", "!0 * 1 * #{u}"],
+          [[[v] * 0] * 1, "!1 * 0 * #{t}", "!1 * 0 * #{u}"]
+        ].each do |vv, tt, uu|
+          it "tests corner case type: #{tt}" do
+            ttt = NDT.new tt
+            uuu = NDT.new tt
+
+            x = XND.new vv, type: ttt
+            y = XND.new vv, type: ttt
+            expect_strict_equal x, y
+
+            y = XND.new vv, type: uuu
+            expect_strict_equal x, y
+          end
+        end
+      end
+
+      EQUAL_TEST_CASES.each do |struct|
+        v = struct.v
+        t = struct.t
+        u = struct.u
+        w = struct.w
+        eq = struct.eq
+        
+        [
+          [[v] * 1, "!1 * #{t}", "!1 * #{u}", [0]],
+          [[v] * 2, "!2 * #{t}", "!2 * #{u}", [1]],
+          [[v] * 1000, "!1000 * #{t}", "!1000 * #{u}", [961]],
+
+          [[[v] * 1] * 1, "!1 * 1 * #{t}", "!1 * 1 * #{u}", [0, 0]],
+          [[[v] * 2] * 1, "!1 * 2 * #{t}", "!1 * 2 * #{u}", [0, 1]],
+          [[[v] * 1] * 2, "!2 * 1 * #{t}", "!2 * 1 * #{u}", [1, 0]],
+          [[[v] * 2] * 2, "!2 * 2 * #{t}", "!2 * 2 * #{u}", [1, 1]],
+          [[[v] * 3] * 2, "!2 * 3 * #{t}", "!2 * 3 * #{u}", [1, 2]],
+          [[[v] * 2] * 3, "!3 * 2 * #{t}", "!3 * 2 * #{u}", [2, 1]],
+          [[[v] * 40] * 3, "!3 * 40 * #{t}", "!3 * 40 * #{u}", [1, 32]]
+        ].each do |vv, tt, uu, indices|
+          it "tests corner case type: #{tt}" do
+            ttt = NDT.new tt
+            uuu = NDT.new tt
+
+            x = XND.new vv, type: ttt
+            y = XND.new vv, type: ttt
+
+            if eq
+              expect_strict_equal x, y
+            else
+              expect_strict_unequal x, y
+            end
+
+            unless u.nil?
+              y = XND.new vv, type: uuu
+              if eq
+                expect_strict_equal x, y
+              else
+                expect_strict_unequal x, y
+              end
+            end
+
+            unless w.nil?
+              y = XND.new vv, type: ttt
+              y[*indices] = w
+              expect_strict_unequal x, y
+
+              y = XND.new vv, type: uuu
+              y[*indices] = w
+              expect_strict_unequal x, y
+            end
+          end
+        end
+      end
+    end # context Fortran
+
+    context "VarDim" do
+      before do
+        @x = XND.new [1,2,3,4], type: "var(offsets=[0,4]) * int64"
+      end
+      
+      it "compares full array" do
+        expect_strict_equal @x, XND.new([1,2,3,4], type: "var(offsets=[0,4]) * int64")
+      end
+
+      it "tests for different shape and/or data" do
+        expect_strict_unequal @x, XND.new([1,2,3,100], type: "var(offsets=[0,4]) * int64")
+        expect_strict_unequal @x, XND.new([1,2,3], type: "var(offsets=[0,3]) * int64")
+        expect_strict_unequal @x, XND.new([1,2,3,4,5], type: "var(offsets=[0,5]) * int64")
+      end
+
+      it "tests different shape" do
+        expect_strict_unequal @x, XND.new([1,2,3], type: "var(offsets=[0,3]) * int64")
+        expect_strict_unequal @x, XND.new([[1,2,3,4]],
+                                          type: "var(offsets=[0,1]) * var(offsets=[0,4]) * int64")
+        expect_strict_unequal @x, XND.new(
+          [[1,2], [3,4]], type: "var(offsets=[0,2]) * var(offsets=[0,2,4]) * int64")
+      end
+
+      it "tests multidimensional arrays" do
+        x = XND.new([[1], [2,3,4,5], [6,7], [8,9,10]])
+        y = XND.new([[1], [2,3,4,5], [6,7], [8,9,10]])
+        
+        expect_strict_equal(x, y)
+      end
+
+      it "tests multidim arrays after assign" do
+        x = XND.new([[1], [2,3,4,5], [6,7], [8,9,10]])
+        y = XND.new([[1], [2,3,4,5], [6,7], [8,9,10]])
+
+        (0..3).to_a.zip([1,4,2,3]).each do |i, shape|
+          shape.times do |k|
+            v = y[i, k]
+            y[i, k] = 100
+
+            expect_strict_unequal x, y
+              
+            y[i, k] = v
+          end
+        end
+      end
+
+      it "tests slices" do
+        x = XND.new([[1], [4,5], [6,7,8], [9,10,11,12]])
+        
+        y = XND.new([[1], [4,5]])
+        expect_strict_equal x[0..1], y
+
+        y = XND.new([[4,5], [6,7,8]])
+        expect_strict_equal x[1..2], y
+
+        # TODO: make this pass after Ruby 2.6 step-range
+        # y = XND.new([[12,11,10,9], [5,4]])
+        # expect_strict_equal x[(0..) % -2, (0..) % -1], y
+      end
+
+      EQUAL_TEST_CASES.each do |struct|
+        v = struct.v
+        t = struct.t
+        u = struct.u
+        [
+          [[v] * 0, "var(offsets=[0,0]) * #{t}",
+           "var(offsets=[0,0]) * #{u}"],
+          [[[v] * 0] * 1, "var(offsets=[0,1]) * var(offsets=[0,0]) * #{t}",
+           "var(offsets=[0,1]) * var(offsets=[0,0]) * #{u}"]
+        ].each do |vv, tt, uu|
+          it "tests edge case for type: #{tt}" do
+            ttt = NDT.new tt
+            uuu = NDT.new tt # uu?
+
+            x = XND.new vv, type: ttt
+
+            y = XND.new vv, type: ttt
+            expect_strict_equal x, y
+
+            y = XND.new vv, type: uuu
+            expect_strict_equal x, y
+          end
+        end
+      end
+
+      EQUAL_TEST_CASES.each do |struct|
+        v = struct.v
+        t = struct.t
+        u = struct.u
+        w = struct.w
+        eq = struct.eq
+        
+        [
+          [[v] * 1, "var(offsets=[0,1]) * #{t}", "var(offsets=[0,1]) * #{u}", [0]],
+          [[v] * 2, "var(offsets=[0,2]) * #{t}", "var(offsets=[0,2]) * #{u}", [1]],
+          [[v] * 1000, "var(offsets=[0,1000]) * #{t}", "var(offsets=[0,1000]) * #{u}", [961]],
+          [[[v], []], "var(offsets=[0,2]) * var(offsets=[0,1,1]) * #{t}",
+           "var(offsets=[0,2]) * var(offsets=[0,1,1]) * #{u}", [0, 0]],
+          [[[], [v]], "var(offsets=[0,2]) * var(offsets=[0,0,1]) * #{t}",
+           "var(offsets=[0,2]) * var(offsets=[0,0,1]) * #{u}", [1, 0]],
+          [[[v], [v]], "var(offsets=[0,2]) * var(offsets=[0,1,2]) * #{t}",
+           "var(offsets=[0,2]) * var(offsets=[0,1,2]) * #{u}", [1, 0]],
+          [[[v], [v] * 2, [v] * 5], "var(offsets=[0,3]) * var(offsets=[0,1,3,8]) * #{t}",
+         "var(offsets=[0,3]) * var(offsets=[0,1,3,8]) * #{u}", [2, 3]]
+        ].each do |vv, tt, uu, indices|
+          it "tests for type tt=#{tt}" do
+            ttt = NDT.new tt
+            uuu = NDT.new tt # uu?
+
+            x = XND.new vv, type: ttt
+            y = XND.new vv, type: ttt
+
+            if eq
+              expect_strict_equal x, y
+            else
+              expect_strict_unequal x, y
+            end
+
+            unless u.nil?
+              y = XND.new vv, type: uuu
+              if eq
+                expect_strict_equal x, y
+              else
+                expect_strict_unequal x, y
+              end
+            end
+
+            unless w.nil?
+              y = XND.new vv, type: ttt
+              y[*indices] = w
+              expect_strict_unequal x, y
+
+              y = XND.new vv, type: uuu
+              y[*indices] = w
+              expect_strict_unequal x, y
+            end
+          end
+        end
+      end
+    end # context VarDim
+
+    context "Tuple" do
       
     end
+
+    context "Float32" do
+      
+    end # context Float32
   end # Context #strict_equal
+
+  context "#match" do
+    context "VarDim" do
+      
+    end # context VarDim
+  end # context #match
 
   context "#to_a" do
     context "FixedDim" do
@@ -1759,7 +2148,7 @@ describe XND do
         expect(x.to_a).to eq([[1,2,3], [4,5,6]])
       end      
     end
-  end
+  end # context to_a
 
   context "#type" do
     it "returns the type of the XND array" do
@@ -1767,7 +2156,7 @@ describe XND do
 
       expect(x.type).to eq(NDT.new("2 * 3 * int64"))
     end
-  end
+  end # context type
 
   context "#to_s" do
     it "returns String representation" do
