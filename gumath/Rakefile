@@ -1,0 +1,65 @@
+require 'rake'
+require 'rake/extensiontask'
+require 'rake/testtask'
+require 'bundler/gem_tasks'
+
+Rake::ExtensionTask.new("ruby_gumath")
+
+def run *cmd
+  sh(cmd.join(" "))
+end
+
+task :console do
+  cmd = ['irb', "-r './lib/gumath.rb'"]
+  run(*cmd)
+end
+
+task :pry do
+  cmd = ['pry', "-r './lib/gumath.rb'"]
+  run(*cmd)
+end
+
+Rake::TestTask.new(:test) do |t|
+  t.libs << "test"
+  t.libs << "lib"
+  t.test_files = FileList['test/**/test_*.rb']
+end
+
+BASEDIR = Pathname( __FILE__ ).dirname.relative_path_from( Pathname.pwd )
+TESTDIR = BASEDIR + 'test'
+
+VALGRIND_OPTIONS = [
+    "--tool=memcheck",
+    #"--leak-check=yes",
+    "--num-callers=15",
+    #"--error-limit=no",
+    "--partial-loads-ok=yes",
+    "--undef-value-errors=no" #,
+    #"--dsymutil=yes"
+]
+
+VALGRIND_MEMORYFILL_OPTIONS = [
+    "--freelist-vol=100000000",
+    "--malloc-fill=6D",
+    "--free-fill=66 ",
+]
+
+# partial-loads-ok and undef-value-errors necessary to ignore
+# spurious (and eminently ignorable) warnings from the ruby
+# interpreter
+
+desc "Run specs under Valgrind."
+task :valgrind => [ :compile ] do |task|
+  cmd = [ 'valgrind' ] + VALGRIND_OPTIONS
+  cmd += " rake test"
+  run( *cmd )
+end
+
+LEAKCHECK_CMD = [ 'ruby', '-Ilib:ext', "#{TESTDIR}/leakcheck.rb" ]
+
+desc "Run leakcheck script."
+task :leakcheck => [ :compile ] do |task|
+  cmd = [ 'valgrind' ] + VALGRIND_OPTIONS
+  cmd += LEAKCHECK_CMD
+  run( *cmd )
+end

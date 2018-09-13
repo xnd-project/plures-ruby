@@ -49,4 +49,5 @@ ranges for references arrays:
 Short term goals:
 
 * Complete support for XND, NDT and gumath.
-* Refactor rspecs to be more 'ruby-like'.
+* Finish each, to_s and match functions in XND.
+* Move from rspec to unittest.
