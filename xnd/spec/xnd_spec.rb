@@ -194,7 +194,7 @@ describe XND do
           it "not implemented for value: #{v}" do 
             expect {
               XND.new v
-            }.to raise_error(NotImplementedError)           
+nnn            }.to raise_error(NotImplementedError)           
           end
         end
       end # context Optional
@@ -2308,13 +2308,533 @@ describe XND do
         end
       end # context "Tuple"
     end
+    
     context "Record" do
-      
-    end
+      it "simple tests" do
+        x = XND.new({'a' => 1, 'b' => 2.0, 'c' => "3", 'd' => "123".b})
+
+        expect_strict_equal x, XND.new({'a' => 1, 'b' => 2.0, 'c' => "3", 'd' => "123".b})
+
+        expect_strict_unequal x, XND.new({'z' => 1, 'b' => 2.0, 'c' => "3", 'd' => "123".b})
+        expect_strict_unequal x, XND.new({'a' => 2, 'b' => 2.0, 'c' => "3", 'd' => "123".b})
+        expect_strict_unequal x, XND.new({'a' => 1, 'b' => 2.1, 'c' => "3", 'd' => "123".b})
+        expect_strict_unequal x, XND.new({'a' => 1, 'b' => 2.0, 'c' => "", 'd' => "123".b})
+        expect_strict_unequal x, XND.new({'a' => 1, 'b' => 2.0, 'c' => "345", 'd' => "123"})
+        expect_strict_unequal x, XND.new({'a' => 1, 'b' => 2.0, 'c' => "3", 'd' => "".b})
+        expect_strict_unequal x, XND.new({'a' => 1, 'b' => 2.0, 'c' => "3", 'd' => "12345".b})
+      end
+
+      it "nested structures" do
+        t = "
+            {a: uint8,
+             b: fixed_string(100, 'utf8'),
+             c: {x: complex128,
+                 y: 2 * 3 * {v: fixed_bytes(size=64, align=32),
+                             u: bytes}},
+             d: ref(string)}
+            "
+        v = {
+          'a' => 10,
+          'b' => "\U00001234\U00001001abc",
+          'c' => {'x' => 12.1e244+3i,
+                  'y' => [[{'v' => "123".b, 'u' => "22".b * 10},
+                           {'v' => "123456".b, 'u' => "23".b * 10},
+                           {'v' => "123456789".b, 'u' => "24".b * 10}],
+                          [{'v' => "1".b, 'u' => "a".b},
+                           {'v' => "12".b, 'u' => "ab".b},
+                           {'v' => "123".b, 'u' => "abc".b}]]
+                 },
+          'd' => "xyz"
+        }
+
+        x = XND.new v, type: t
+        y = XND.new v, type: t
+        expect_strict_equal x, y
+
+        w = y[0].value
+        y[0] = 11
+        expect_strict_unequal x, y
+        y[0] = w
+        expect_strict_equal x, y
+
+        w = y[1].value
+        y[1] = "\U00001234\U00001001abx"
+        expect_strict_unequal x, y
+        y[1] = w
+        expect_strict_equal x, y
+
+        w = y[2,0].value
+        y[2,0] = 12.1e244-3i
+        expect_strict_unequal x, y
+
+        y[2, 0] = w
+        expect_strict_equal x, y
+
+        w = y[2,1,1,2,0].value
+        y[2,1,1,2,0] = "abc".b
+        expect_strict_unequal x, y
+
+        y[2,1,1,2,0] = w
+        expect_strict_equal x, y
+
+        w = y[3].value
+        y[3] = ""
+        expect_strict_unequal x, y
+        y[3] = w
+        expect_strict_equal x, y
+      end
+
+      it "test corner cases" do
+        EQUAL_TEST_CASES.each do |struct|
+          v = struct.v
+          t = struct.t
+          u = struct.u
+
+          [
+            [{'x' => [v] * 0}, "{x: 0 * #{t}}", "{x: 0 * #{u}}"],
+            [{'x' => {'y' => [v] * 0}}, "{x: {y: 0 * #{t}}}", "{x: {y: 0 * #{u}}}"]
+          ].each do |vv, tt, uu|
+            ttt = NDT.new tt
+            uuu = NDT.new tt
+
+            x = XND.new vv, type: ttt
+
+            y = XND.new vv, type: ttt
+            expect_strict_equal x, y
+
+            y = XND.new vv, type: uuu
+            expect_strict_equal x, y
+          end
+        end
+      end
+
+      it "test many dtypes" do
+        EQUAL_TEST_CASES.each do |struct|
+          v = struct.v
+          t = struct.t
+          u = struct.u
+          w = struct.w
+          eq = struct.eq
+
+          [
+            [{'x' => v}, "{x: #{t}}", "{x: #{u}}", [0]],
+            [{'x' => {'y' => v}}, "{x: {y: #{t}}}", "{x: {y: #{u}}}", [0, 0]],
+            [{'x' => [v] * 1}, "{x: 1 * #{t}}", "{x: 1 * #{u}}", [0, 0]],
+            [{'x' => [v] * 3}, "{x: 3 * #{t}}", "{x: 3 * #{u}}", [0, 2]]
+          ].each do |vv, tt, uu, indices|
+            ttt = NDT.new tt
+            uuu = NDT.new tt
+
+            x = XND.new vv, type: ttt
+
+            y = XND.new vv, type: ttt
+            if eq
+              expect_strict_equal x, y
+            else
+              expect_strict_unequal x, y
+            end
+
+            unless u.nil?
+              y = XND.new vv, type: uuu
+              if eq
+                expect_strict_equal x, y
+              else
+               expect_strict_unequal x, y
+              end
+            end
+
+            unless w.nil?
+              y = XND.new vv, type: ttt
+              y[*indices] = w
+
+              expect_strict_unequal x, y
+            end
+          end
+        end
+      end
+    end # context Record
+
+    context "Ref" do
+      it "simple tests" do
+        x = XND.new [1,2,3,4], type: "ref(4 * float32)"
+
+        expect_strict_equal x, XND.new([1,2,3,4], type: "ref(4 * float32)")
+
+        expect_strict_unequal x, XND.new([1,2,3,4,5], type: "ref(5 * float32)")
+        expect_strict_unequal x, XND.new([1,2,3], type: "ref(3 * float32)")
+        expect_strict_unequal x, XND.new([1,2,3,43,5], type: "ref(5 * float32)")
+      end
+
+      it "corner cases and many dtypes" do
+        EQUAL_TEST_CASES.each do |struct|
+          v = struct.v
+          t = struct.t
+          u = struct.u
+
+          [
+            [[v] * 0, "ref(0 * #{t})", "ref(0 * #{u})"],
+            [[v] * 0, "ref(ref(0 * #{t}))", "ref(ref(0 * #{u}))"],
+            [[v] * 0, "ref(ref(ref(0 * #{t})))", "ref(ref(ref(0 * #{u})))"]
+          ].each do |vv, tt, uu|
+            ttt = NDT.new tt
+            uuu = NDT.new tt
+
+            x = XND.new vv, type: ttt
+
+            y = XND.new vv, type: ttt
+            expect_strict_equal x, y
+
+            y = XND.new vv, type: uuu
+            expect_strict_equal x, y
+          end
+        end
+      end
+
+      it "many dtypes and indices", focus: true do
+        EQUAL_TEST_CASES.each do |struct|
+          v = struct.v
+          t = struct.t
+          u = struct.u
+          w = struct.w
+          eq = struct.eq
+
+          [
+            [v, "ref(#{t})", "ref(#{u})", []],
+            [v, "ref(ref(#{t}))", "ref(ref(#{u}))", []],
+            [v, "ref(ref(ref(#{t})))", "ref(ref(ref(#{u})))", []],
+            [[v] * 1, "ref(1 * #{t})", "ref(1 * #{u})", 0],
+            [[v] * 3, "ref(3 * #{t})", "ref(3 * #{u})", 2]
+          ].each do |vv, tt, uu, indices|
+            ttt = NDT.new tt
+            uuu = NDT.new tt
+
+            x = XND.new vv, type: ttt
+
+            y = XND.new vv, type: ttt
+            if eq
+              expect_strict_equal x, y
+            else
+              expect_strict_unequal x, y
+            end
+
+            unless u.nil?
+              y = XND.new vv, type: uuu
+              if eq
+                expect_strict_equal x, y
+              else
+                expect_strict_unequal x, y
+              end
+            end
+
+            unless w.nil?
+              y = XND.new vv, type: ttt
+              y[indices] = w
+
+              expect_strict_unequal x, y
+            end
+          end
+        end
+      end
+    end # context Ref
+
+    context "Constr" do
+      it "simple tests" do
+        x = XND.new [1,2,3,4], type: "A(4 * float32)"
+
+        expect_strict_equal x, XND.new([1,2,3,4], type: "A(4 * float32)")
+
+        expect_strict_unequal x, XND.new([1,2,3,4], type: "B(4 * float32)")
+        expect_strict_unequal x, XND.new([1,2,3,4,5], type: "A(5 * float32)")
+        expect_strict_unequal x, XND.new([1,2,3], type: "A(3 * float32)")
+        expect_strict_unequal x, XND.new([1,2,3,4,55], type: "A(5 * float32)")
+      end
+
+      it "corner cases and dtypes" do
+        EQUAL_TEST_CASES.each do |struct|
+          v = struct.v
+          t = struct.t
+          u = struct.u
+
+          [
+            [[v] * 0, "A(0 * #{t})", "A(0 * #{u})"],
+            [[v] * 0, "A(B(0 * #{t}))", "A(B(0 * #{u}))"],
+            [[v] * 0, "A(B(C(0 * #{t})))", "A(B(C(0 * #{u})))"]
+          ].each do |vv, tt, uu|
+            ttt = NDT.new tt
+            uuu = NDT.new tt
+
+            x = XND.new vv, type: ttt
+
+            y = XND.new vv, type: ttt
+            expect_strict_equal x, y
+
+            y = XND.new vv, type: uuu
+            expect_strict_equal x, y            
+          end
+        end
+      end
+
+      it "more dtypes" do
+        EQUAL_TEST_CASES.each do |struct|
+          v = struct.v
+          t = struct.t
+          u = struct.u
+          w = struct.w
+          eq = struct.eq
+
+          [
+            [v, "A(#{t})", "A(#{u})", []],
+            [v, "A(B(#{t}))", "A(B(#{u}))", []],
+            [v, "A(B(C(#{t})))", "A(B(C(#{u})))", []],
+            [[v] * 1, "A(1 * #{t})", "A(1 * #{u})", 0],
+            [[v] * 3, "A(3 * #{t})", "A(3 * #{u})", 2]
+          ].each do |vv, tt, uu, indices|
+            ttt = NDT.new tt
+            uuu = NDT.new tt
+
+            x = XND.new vv, type: ttt
+
+            y = XND.new vv, type: ttt
+            if eq
+              expect_strict_equal x, y
+            else
+              expect_strict_unequal x, y
+            end
+
+            unless u.nil?
+              y = XND.new vv, type: uuu
+              if eq
+                expect_strict_equal x, y
+              else
+                expect_strict_unequal x, y
+              end
+            end
+
+            unless w.nil?
+              y = XND.new vv, type: ttt
+              y[indices] = w
+
+              expect_strict_unequal x, y
+            end
+          end
+        end
+      end
+    end # context Constr
+
+    context "Nominal" do
+      it "simple tests" do
+        NDT.typedef "some1000", "4 * float32"
+        NDT.typedef "some1001", "4 * float32"
+
+        x = XND.new([1,2,3,4], type: "some1000")
+
+        expect_strict_equal x, XND.new([1,2,3,4], type: "some1000")
+
+        expect_strict_unequal x, XND.new([1,2,3,4], type: "some1001")
+        expect_strict_unequal x, XND.new([1,2,3,5], type: "some1000")
+      end
+    end # context Nominal
+
+    context "Categorical" do
+      it "simple tests" do
+        t = "3 * categorical(NA, 'January', 'August')"
+        x = XND.new ['August', 'January', 'January'], type: t
+
+        y = XND.new ['August', 'January', 'January'], type: t
+        expect_strict_equal x, y
+
+        y = XND.new ['August', 'January', 'August'], type: t
+        expect_strict_unequal x, y
+
+        x = XND.new ['August', nil, 'August'], type: t
+        y = XND.new ['August', nil, 'August'], type: t
+
+        expect_strict_unequal x, y
+      end
+    end # context Categorical
+
+    context "FixedString" do
+      it "compare" do
+        [
+          ["fixed_string(1)", "", "x"],
+          ["fixed_string(3)", "y" * 3, "yyz"],
+          ["fixed_string(1, 'ascii')", "a".b, "b".b],
+          ["fixed_string(3, 'utf8')", "a" * 3, "abc"],
+          #["fixed_string(3, 'utf16')", "\u1234" * 3, "\u1234\u1235\u1234"],
+          #["fixed_string(3, 'utf32')", "\U00001234" * 3, "\U00001234\U00001234\U00001235"]
+        ].each do |t, v, w| 
+          x = XND.new v, type: t
+          y = XND.new v, type: t
+
+          expect_strict_equal x, y
+
+          y[[]] = w
+
+          expect_strict_unequal x, y
+        end        
+      end
+    end # context FixedString
+
+    context "FixedBytes" do
+      it "simple test" do 
+        [
+          ["a".b, "fixed_bytes(size=1)", "b".b],
+          ["a".b * 100, "fixed_bytes(size=100)", "a".b * 99 + "b".b],
+          ["a".b * 4, "fixed_bytes(size=4, align=2)", "a".b * 2 + "b".b]
+        ].each do |v, t, w|
+          x = XND.new v, type: t
+          y = XND.new v, type: t
+
+          expect_strict_equal x, y
+
+          y[[]] = w
+          expect_strict_unequal x, y
+        end
+      end
+
+      it "align" do
+        x = XND.new("a".b * 128, type: "fixed_bytes(size=128, align=16)")
+        y = XND.new("a".b * 128, type: "fixed_bytes(size=128, align=16)")
+        expect_strict_equal x, y
+      end
+    end # context FixedBytes
+
+    context "String" do
+      it "compare" do
+        x = XND.new "abc"
+
+        expect_strict_equal x, XND.new("abc")
+        expect_strict_equal x, XND.new("abc\0\0")
+
+        expect_strict_unequal x, XND.new("acb")
+      end
+    end # context String
+
+    context "Bool" do
+      it "compare" do
+        expect_strict_equal XND.new(true), XND.new(true)
+        expect_strict_equal XND.new(false), XND.new(false)
+        expect_strict_unequal XND.new(true), XND.new(false)
+        expect_strict_unequal XND.new(false), XND.new(true)
+      end
+    end # context Bool
+
+    context "Signed" do
+      it "compare" do
+        ["int8", "int16", "int32", "int64"].each do |t|
+          expect_strict_equal XND.new(-10, type: t), XND.new(-10, type: t)
+          expect_strict_unequal XND.new(-10, type: t), XND.new(100, type: t)
+        end
+      end
+    end # context Signed
+
+    context "Unsigned" do
+      it "compare" do
+        ["uint8", "uint16", "uint32", "uint64"].each do |t|
+          expect_strict_equal XND.new(10, type: t), XND.new(10, type: t)
+          expect_strict_unequal XND.new(10, type: t), XND.new(100, type: t)
+        end
+      end
+    end # context Unsigned
 
     context "Float32" do
-      
+      it "compare" do
+        expect_strict_equal XND.new(1.2e7, type: "float32"),
+                            XND.new(1.2e7, type: "float32")
+        expect_strict_equal XND.new(Float::INFINITY, type: "float32"),
+                            XND.new(Float::INFINITY, type: "float32")
+        expect_strict_equal XND.new(-Float::INFINITY, type: "float32"),
+                            XND.new(-Float::INFINITY, type: "float32")
+
+        expect_strict_unequal XND.new(1.2e7, type: "float32"),
+                              XND.new(-1.2e7, type: "float32")
+        expect_strict_unequal XND.new(Float::INFINITY, type: "float32"),
+                              XND.new(-Float::INFINITY, type: "float32")
+        expect_strict_unequal XND.new(-Float::INFINITY, type: "float32"),
+                              XND.new(Float::INFINITY, type: "float32")
+        expect_strict_unequal XND.new(Float::NAN, type: "float32"),
+                              XND.new(Float::NAN, type: "float32")
+      end
     end # context Float32
+
+    context "Float64" do
+      it "compare" do
+        expect_strict_equal XND.new(1.2e7, type: "float64"),
+                            XND.new(1.2e7, type: "float64")
+        expect_strict_equal XND.new(Float::INFINITY, type: "float64"),
+                            XND.new(Float::INFINITY, type: "float64")
+        expect_strict_equal XND.new(-Float::INFINITY, type: "float64"),
+                            XND.new(-Float::INFINITY, type: "float64")
+
+        expect_strict_unequal XND.new(1.2e7, type: "float64"),
+                              XND.new(-1.2e7, type: "float64")
+        expect_strict_unequal XND.new(Float::INFINITY, type: "float64"),
+                              XND.new(-Float::INFINITY, type: "float64")
+        expect_strict_unequal XND.new(-Float::INFINITY, type: "float64"),
+                              XND.new(Float::INFINITY, type: "float64")
+        expect_strict_unequal XND.new(Float::NAN, type: "float64"),
+                              XND.new(Float::NAN, type: "float64")              
+      end
+    end # context Float64
+
+    context "Complex64" do
+      it "compare" do
+        t = "complex64"
+
+        inf = Float("0x1.ffffffp+127")
+        denorm_min = Float("0x1p-149")
+        lowest = Float("-0x1.fffffep+127")
+        max = Float("0x1.fffffep+127")
+
+        c = [denorm_min, lowest, max, Float::INFINITY, -Float::INFINITY, Float::NAN]
+
+        c.each do |r|
+          c.each do |s|
+            c.each do |i|
+              c.each do |j|
+                x = XND.new Complex(r, i), type: t
+                y = XND.new Complex(s, j), type: t
+
+                if r == s && i == j
+                  expect_strict_equal x, y
+                else
+                  expect_strict_unequal x, y
+                end
+              end
+            end
+          end
+        end
+      end
+    end # context Complex64
+
+    context "Complex128" do
+      it "compare" do
+        t = "complex128"
+
+        denorm_min = Float("0x0.0000000000001p-1022")
+        lowest = Float("-0x1.fffffffffffffp+1023")
+        max = Float("0x1.fffffffffffffp+1023")
+
+        c = [denorm_min, lowest, max, Float::INFINITY, -Float::INFINITY, Float::NAN]
+
+        c.each do |r|
+          c.each do |s|
+            c.each do |i|
+              c.each do |j|
+                x = XND.new Complex(r, i), type: t
+                y = XND.new Complex(s, j), type: t
+
+                if r == s && i == j
+                  expect_strict_equal x, y
+                else
+                  expect_strict_unequal x, y
+                end
+              end
+            end
+          end
+        end        
+      end
+    end # context complex128
   end # Context #strict_equal
 
   context "#match" do

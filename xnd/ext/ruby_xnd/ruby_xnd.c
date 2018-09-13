@@ -591,6 +591,8 @@ mblock_init(xnd_t * const x, VALUE data)
     int64_t codepoints = t->FixedString.size;
     int64_t len;
 
+    Check_Type(data, T_STRING);
+
     /* FIXME: check for unicode string. */
     
     switch (t->FixedString.encoding) {
@@ -673,6 +675,8 @@ mblock_init(xnd_t * const x, VALUE data)
     int64_t size = t->FixedBytes.size;
     int64_t len;
 
+    Check_Type(data, T_STRING);
+
     if (!string_is_ascii(data)) {
       rb_raise(rb_eTypeError, "String must be ASCII encoded for FixedBytes.");
     }
@@ -693,6 +697,8 @@ mblock_init(xnd_t * const x, VALUE data)
     const char *cp;
     char *s;
 
+    Check_Type(data, T_STRING);
+    
     cp = StringValuePtr(data);
     size = RSTRING_LEN(data);
     s = ndt_strdup(cp, &ctx);
@@ -712,6 +718,8 @@ mblock_init(xnd_t * const x, VALUE data)
   case Bytes: {
     size_t size;
     char *cp, *s;
+
+    Check_Type(data, T_STRING);
 
     size = RSTRING_LEN(data);
     cp = StringValuePtr(data);
@@ -1478,6 +1486,18 @@ convert_key(xnd_index_t *indices, int *len, int argc, VALUE *argv, size_t size)
     }
 
     *len = argc;
+    return flags;
+  }
+  else if (argc == 1 && RB_TYPE_P(argv[0], T_ARRAY)) { // args as an array
+    *len = RARRAY_LEN(argv[0]);
+
+    for (int i = 0; i < *len; i++) {
+      VALUE args[1] = { INT2NUM(i) };
+      flags |= convert_single(indices+i, rb_ary_aref(1, args, argv[0]), size);
+      if (flags & KEY_ERROR) {
+        return KEY_ERROR;
+      }
+    }
     return flags;
   }
 
