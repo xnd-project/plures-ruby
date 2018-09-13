@@ -1809,6 +1809,50 @@ rb_xnd_get_complex_values(VALUE comp, double *real, double *imag)
   return 0;
 }
 
+/* Return true if obj is of type XND. */
+int
+rb_xnd_check_type(VALUE obj)
+{
+  return XND_CHECK_TYPE(obj);
+}
+
+/* Return the xnd_t internal object within this Ruby object. */
+const xnd_t *
+rb_xnd_const_xnd(VALUE xnd)
+{
+  XndObject *xnd_p;
+
+  GET_XND(xnd, xnd_p);
+
+  return &((XndObject *)xnd_p)->xnd;
+}
+
+VALUE
+rb_xnd_from_xnd(VALUE type, xnd_t *x)
+{
+  
+}
+
+VALUE
+rb_xnd_get_type(void)
+{
+  
+}
+
+/*
+ * This function handles two common view cases:
+ *
+ *   a) A pristine view that owns everything, including new memory.
+ *   b) A view that owns its type after xnd_subscript().
+ */
+VALUE
+rb_xnd_from_xnd_view(xnd_view_t *x)
+{
+  if (x->obj == NULL && (x->flags & XND_OWN_ALL) == XND_OWN_ALL) {
+    VALUE type = rb_xnd_get_type();
+  }
+}
+
 void Init_ruby_xnd(void)
 {
   /* init classes */

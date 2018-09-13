@@ -29,7 +29,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #ifndef RUBY_GUMATH_INTERNAL_H
 #define RUBY_GUMATH_INTERNAL_H
 
@@ -39,6 +38,8 @@
 #include "xnd.h"
 #include "ruby_xnd.h"
 #include "gumath.h"
+#include "ruby_gumath.h"
+#include "util.h"
 
 /* Classes */
 VALUE cGumath;

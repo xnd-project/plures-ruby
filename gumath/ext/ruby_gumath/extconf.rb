@@ -1,5 +1,8 @@
 require 'mkmf'
 
+dir_config "ruby_gumath", "/home/sameer/gitrepos/plures-ruby/build/include",
+           "/home/sameer/gitrepos/plures-ruby/build/lib"
+
 ["ndtypes", "xnd", "gumath"].each do |lib|
   find_library(lib, nil, "/home/sameer/gitrepos/plures-ruby/build/lib/")
   have_library(lib)
@@ -15,4 +18,6 @@ $objs = basenames.map { |b| "#{b}.o"   }
 $srcs = basenames.map { |b| "#{b}.c" }
 
 $CFLAGS += " -fPIC -g "
+# FIXME: This is jugaad. Remove on deploy.
+$libs += " -lndtypes -lxnd -lgumath "
 create_makefile("ruby_gumath/ruby_gumath")

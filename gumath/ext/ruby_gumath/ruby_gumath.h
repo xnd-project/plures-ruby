@@ -33,5 +33,7 @@
 #ifndef RUBY_GUMATH_H
 #define RUBY_GUMATH_H
 
+int rb_gumath_add_functions(VALUE module, const gm_tbl_t *tbl);
+#define GUMATH_FUNCTION_HASH rb_intern("@gumath_functions")
 
 #endif

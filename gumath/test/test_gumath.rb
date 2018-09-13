@@ -2,6 +2,14 @@ require 'test_helper'
 
 Fn = Gumath::Functions
 
+class TestFunctionHash < Minitest::Test
+  def test_hash_contents
+    hash = Fn.instance_variable_get(:@gumath_functions)
+
+    assert_instance_of Gumath::GufuncObject, hash[:sin]
+  end
+end
+
 class TestCall < Minitest::Test
   def test_sin_scalar
     x1 = XND.new(1.2, type: "float64")

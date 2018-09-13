@@ -29,31 +29,34 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* File containing headers for Ruby XND wrapper. 
- *
- * Author: Sameer Deshmukh (@v0dro)
-*/
-#ifndef RUBY_XND_H
-#define RUBY_XND_H
+/* 
+   Utility functions for gumath. Functions should be inlined.
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+   https://stackoverflow.com/questions/8201944/multiple-definition-and-header-only-libraries
+ */
 
-#include "ruby.h"
-#include "ndtypes.h"
-#include "xnd.h"
+#ifndef GUMATH_UTIL_H
+#define GUMATH_UTIL_H
 
-  size_t rb_xnd_hash_size(VALUE hash);
-  int rb_xnd_get_complex_values(VALUE comp, double *real, double *imag);
-  /* Return true if obj is of type XND. */
-  int rb_xnd_check_type(VALUE obj);
-  const xnd_t * rb_xnd_const_xnd(VALUE xnd);
-  
-  typedef struct XndObject XndObject;
-
-#ifdef __cplusplus
+static inline int
+xnd_exists(void)
+{
+  return RTEST(rb_const_get(rb_cObject, rb_intern("XND")));
 }
-#endif
 
-#endif  /* RUBY_XND_H */
+static inline int
+ndt_exists(void)
+{
+  return RTEST(rb_const_get(rb_cObject, rb_intern("NDT")));
+}
+
+/* Raise an error stored in $!. Clears it before raising. */
+inline void
+raise_error(void)
+{
+  VALUE exeception = rb_errinfo();
+
+  rb_set_errinfo(Qnil);
+  rb_exc_raise(exeception);
+}
+#endif  /* GUMATH_UTIL_H */

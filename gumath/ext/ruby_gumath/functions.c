@@ -30,9 +30,65 @@
  */
 #include "ruby_gumath_internal.h"
 
+/****************************************************************************/
+/*                              Static globals                              */
+/****************************************************************************/
+
+/* Function table */
+static gm_tbl_t *table = NULL;
 static VALUE mGumath_Functions;
+static int initialized = 0;
+
+/****************************************************************************/
+/*                              Singleton methods                           */
+/****************************************************************************/
+static VALUE
+mGumath_Functions_s_method_missing(int argc, VALUE *argv, VALUE module)
+{
+  
+}
 
 void Init_gumath_functions(void)
 {
-  mGumath_Functions = rb_define_module_under(cGumath, "Functions");  
+  /* Initialize gumath built-in function table. */
+  NDT_STATIC_CONTEXT(ctx);
+
+  if (!initialized) {
+    if (!xnd_exists()) {
+      rb_raise(rb_eLoadError, "XND is needed for making gumath work.");
+    }
+    if (!ndt_exists()) {
+      rb_raise(rb_eLoadError, "NDT is needed for maing gumath work.");
+    }
+
+    table = gm_tbl_new(&ctx);
+    if (table == NULL) {
+      rb_ndtypes_set_error(&ctx);
+      raise_error();
+    }
+
+    if (gm_init_unary_kernels(table, &ctx) < 0) {
+      rb_ndtypes_set_error(&ctx);
+      raise_error();
+    }
+
+    if (gm_init_binary_kernels(table, &ctx) < 0) {
+      rb_ndtypes_set_error(&ctx);
+      raise_error();
+    }
+
+    initialized = 1;
+  }
+
+  mGumath_Functions = rb_define_module_under(cGumath, "Functions");
+  rb_ivar_set(mGumath_Functions, GUMATH_FUNCTION_HASH, rb_hash_new());
+
+  if (rb_gumath_add_functions(mGumath_Functions, table) < 0) {
+    mGumath_Functions = Qundef;
+    rb_raise(rb_eLoadError, "failed to load functions into module Gumath::Functions.");
+  }
+
+  /* Singleton methods */
+  rb_define_singleton_method(mGumath_Functions, "method_missing",
+                             mGumath_Functions_s_method_missing, -1);
 }
