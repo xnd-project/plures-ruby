@@ -26,6 +26,7 @@ const ndt_t * rb_ndtypes_const_ndt(VALUE ndt);
 VALUE rb_ndtypes_move_subtree(VALUE src, ndt_t *t);
 VALUE rb_ndtypes_from_object(VALUE type);
 VALUE rb_ndtypes_set_error(ndt_context_t *ctx);
+VALUE rb_ndtypes_from_type(ndt_t *type);
 
 #if defined(__cplusplus)
 } /* extern "C" { */

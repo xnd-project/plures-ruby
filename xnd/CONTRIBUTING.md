@@ -11,10 +11,6 @@ This requires some modifications in both the ndtypes and xnd repos. ndtypes
 must ensure that the relevant header files and shared object are exposed to
 other Ruby gems.
 
-## C API etiqquette
-
-Its important to know what to expose to other Ruby programs via the C API.
-
 ## structs in XND
 
 The primary struct that contains data for the XND type is the following:

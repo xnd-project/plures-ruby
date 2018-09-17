@@ -166,7 +166,10 @@ Gumath_GufuncObject_call(int argc, VALUE *argv, VALUE self)
 
   for (i = 0; i < spec.nout; i++) {
     if (ndt_is_concrete(spec.out[i])) {
-      //x = 
+      x = rb_xnd_empty_from_type(spec.out[i]);
+      if (x == NULL) {
+        
+      }
     }
   }
 }
@@ -184,7 +187,7 @@ Gumath_s_unsafe_add_kernel(int argc, VALUE *argv, VALUE klass)
 static VALUE
 Gumath_s_get_max_threads(VALUE klass)
 {
-  
+  return INT2NUM(max_threads);
 }
 
 static VALUE

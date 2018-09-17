@@ -180,6 +180,31 @@ mblock_empty(VALUE type)
   return WRAP_MBLOCK(cRubyXND_MBlock, mblock_p);
 }
 
+static VALUE
+mblock_from_xnd(xnd_t *src)
+{
+  NDT_STATIC_CONTEXT(ctx);
+  MemoryBlockObject *mblock_p;
+  VALUE type, mblock;
+  xnd_master_t *x;
+
+  x = xnd_from_xnd(src, XND_OWN_EMBEDDED, &ctx);
+  if (x == NULL) {
+    seterr(&ctx);
+    raise_error();
+  }
+
+  type = rb_ndtypes_from_type((ndt_t *)x->master.type);
+  mblock = mblock_allocate();
+
+  GET_MBLOCK(mblock, mblock_p);
+
+  mblock_p->type = type;
+  mblock_p->xnd = x;
+
+  return mblock;
+}
+
 static void
 _strncpy(char *dest, const void *src, size_t len, size_t size)
 {
@@ -194,7 +219,6 @@ string_is_unicode(VALUE str)
 {
   
 }
-
 
 static int
 string_is_ascii(VALUE str)
@@ -919,7 +943,7 @@ XND_from_mblock(XndObject *xnd_p, VALUE mblock)
   MemoryBlockObject *mblock_p;
 
   GET_MBLOCK(mblock, mblock_p);
- 
+  
   xnd_p->mblock = mblock;
   xnd_p->type = mblock_p->type;
   xnd_p->xnd = mblock_p->xnd->master;
@@ -1827,10 +1851,33 @@ rb_xnd_const_xnd(VALUE xnd)
   return &((XndObject *)xnd_p)->xnd;
 }
 
+/* Creae a new XND object from xnd_t type.  */
 VALUE
 rb_xnd_from_xnd(VALUE type, xnd_t *x)
 {
+  VALUE mblock, xnd;
+  XndObject *xnd_p;
   
+  mblock = mblock_from_xnd(x);
+  xnd = XndObject_alloc();
+  GET_XND(xnd, xnd_p);
+  
+  XND_from_mblock(xnd_p, mblock);
+  rb_xnd_gc_guard_register(xnd_p, mblock);
+
+  return xnd;
+}
+
+VALUE
+rb_xnd_empty_from_type(ndt_t *t)
+{
+  MemoryBlockObject *mblock_p;
+  VALUE type, mblock;
+
+  type = rb_ndtypes_from_type(t);
+  mblock = mblock_empty(type);
+
+  return XND_from_mblock()
 }
 
 VALUE

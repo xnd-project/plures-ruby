@@ -52,3 +52,17 @@ to denote 'infinity' in a Range. To make XND work with infinite ranges, XND will
 
 Note that this behaviour is contrary to the behaviour of `Array`, where specfying `Float::INFINITY`
 in a Range throws an error.
+
+# GC interfacing
+
+Both XND and NDT use 'GC guard tables' to keep Ruby object in use from getting garbage collected.
+This needs to be done because some objects use internal Ruby objects that are shared between
+multiple user-facing objects. 
+
+The chain of objects in the GC table is as follows:
+
+In NDT:
+NDT -> RBUF
+
+In XND:
+XND -> MBLOCK

@@ -605,8 +605,24 @@ NDTypes_s_instantiate(VALUE klass, VALUE name, VALUE type)
 /*                                 Public C API                               */
 /****************************************************************************/
 
+/* Create NDT object from ndt_t type struct. */
+VALUE
+rb_ndtypes_from_type(ndt_t *type)
+{
+  VALUE self;
+  NdtObject *self_p;
+
+  self = NdtObject_alloc();
+  GET_NDT(self, self_p);
+
+  NDT(self_p) = type;
+
+  return self;
+}
+
 /* Return 1 if obj is of type NDTypes. 0 otherwise. */
-int rb_ndtypes_check_type(VALUE obj)
+int
+rb_ndtypes_check_type(VALUE obj)
 {
   return NDT_CHECK_TYPE(obj);
 }
