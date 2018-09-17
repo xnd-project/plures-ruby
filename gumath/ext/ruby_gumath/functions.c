@@ -45,7 +45,19 @@ static int initialized = 0;
 static VALUE
 mGumath_Functions_s_method_missing(int argc, VALUE *argv, VALUE module)
 {
+  VALUE method_name = argv[0];
+  VALUE method_hash = rb_ivar_get(module, GUMATH_FUNCTION_HASH);
+  VALUE gumath_method = rb_hash_aref(method_hash, method_name);
+  int is_present = RTEST(gumath_method);
   
+  if (is_present) {
+    rb_funcall(gumath_method, rb_intern("call"), argc-1, &argv[1]);
+  }
+  else {
+    VALUE str = rb_funcall(method_name, rb_intern("to_s"), 0, NULL);
+    rb_raise(rb_eNoMethodError, "Method %s not present in this gumath module.",
+             StringValueCStr(str));
+  }
 }
 
 void Init_gumath_functions(void)

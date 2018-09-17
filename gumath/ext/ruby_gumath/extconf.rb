@@ -13,7 +13,7 @@ end
   have_header(header)
 end
 
-basenames = %w{functions ruby_gumath}
+basenames = %w{gufunc_object functions ruby_gumath}
 $objs = basenames.map { |b| "#{b}.o"   }
 $srcs = basenames.map { |b| "#{b}.c" }
 

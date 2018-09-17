@@ -28,21 +28,28 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef GUFUNC_OBJECT_H
+#define GUFUNC_OBJECT_H
 
-#ifndef RUBY_GUMATH_INTERNAL_H
-#define RUBY_GUMATH_INTERNAL_H
+#include "ruby_gumath_internal.h"
 
-#include <ruby.h>
-#include "ndtypes.h"
-#include "ruby_ndtypes.h"
-#include "xnd.h"
-#include "ruby_xnd.h"
-#include "gumath.h"
-#include "gufunc_object.h"
-#include "ruby_gumath.h"
-#include "util.h"
+typedef struct {
+  const gm_tbl_t *table;          /* kernel table */
+  char *name;                     /* function name */
+} GufuncObject;
 
-/* Classes */
-VALUE cGumath;
+const rb_data_type_t GufuncObject_type;
+VALUE cGumath_GufuncObject;
 
-#endif  /* RUBY_GUMATH_INTERNAL_H */
+#define GET_GUOBJ(obj, guobj_p) do {                              \
+    TypedData_Get_Struct((obj), GufuncObject,                     \
+                         &GufuncObject_type, guobj_p);            \
+  } while (0)
+#define MAKE_GUOBJ(klass, guobj_p) TypedData_Make_Struct(klass, GufuncObject, \
+                                                          &GufuncObject_type, guobj_p)
+#define WRAP_GUOBJ(klass, guobj_p) TypedData_Wrap_Struct(klass,         \
+                                                          &GufuncObject_type, guobj_p)
+
+VALUE GufuncObject_alloc(const gm_tbl_t *table, const char *name);
+
+#endif

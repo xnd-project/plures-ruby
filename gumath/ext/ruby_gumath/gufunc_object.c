@@ -29,20 +29,51 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RUBY_GUMATH_INTERNAL_H
-#define RUBY_GUMATH_INTERNAL_H
-
-#include <ruby.h>
-#include "ndtypes.h"
-#include "ruby_ndtypes.h"
-#include "xnd.h"
-#include "ruby_xnd.h"
-#include "gumath.h"
 #include "gufunc_object.h"
-#include "ruby_gumath.h"
-#include "util.h"
 
-/* Classes */
-VALUE cGumath;
+/****************************************************************************/
+/*                               Gufunc Object                              */
+/****************************************************************************/
 
-#endif  /* RUBY_GUMATH_INTERNAL_H */
+static void
+GufuncObject_dfree(void *self)
+{
+  GufuncObject *guobj = (GufuncObject*)self;
+
+  ndt_free(guobj->name);
+}
+
+static size_t
+GufuncObject_dsize(const void *self)
+{
+  return sizeof(GufuncObject);
+}
+
+const rb_data_type_t GufuncObject_type = {
+  .wrap_struct_name = "GufuncObject",
+  .function = {
+    .dmark = NULL,
+    .dfree = GufuncObject_dfree,
+    .dsize = GufuncObject_dsize,
+    .reserved = {0,0},
+  },
+  .parent = 0,
+  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
+};
+
+VALUE
+GufuncObject_alloc(const gm_tbl_t *table, const char *name)
+{
+  NDT_STATIC_CONTEXT(ctx);
+  GufuncObject *guobj_p;
+  VALUE guobj;
+
+  guobj = MAKE_GUOBJ(cGumath_GufuncObject, guobj_p);
+  guobj_p->table = table;
+  guobj_p->name = ndt_strdup(name, &ctx);
+  if (guobj_p->name == NULL) {
+    seterr(&ctx);
+  }
+
+  return guobj;
+}

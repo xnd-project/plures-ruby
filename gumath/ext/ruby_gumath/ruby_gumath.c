@@ -47,9 +47,7 @@ static  XndObject *xnd = NULL;
 static int64_t max_threads = 1;
 
 static int initialized = 0;
-
 extern VALUE cGumath;
-static VALUE cGumath_GufuncObject;
 
 /****************************************************************************/
 /*                               Error handling                             */
@@ -59,66 +57,6 @@ static VALUE
 seterr(ndt_context_t *ctx)
 {
   return rb_ndtypes_set_error(ctx);
-}
-
-/****************************************************************************/
-/*                               Gufunc Object                              */
-/****************************************************************************/
-
-typedef struct {
-  const gm_tbl_t *table;          /* kernel table */
-  char *name;                     /* function name */
-} GufuncObject;
-
-#define GET_GUOBJ(obj, guobj_p) do {                              \
-    TypedData_Get_Struct((obj), GufuncObject,                     \
-                         &GufuncObject_type, (guobj_p));          \
-  } while (0)
-#define MAKE_GUOBJ(klass, guobj_p) TypedData_Make_Struct(klass, GufuncObject, \
-                                                          &GufuncObject_type, guobj_p)
-#define WRAP_GUOBJ(klass, guobj_p) TypedData_Wrap_Struct(klass,           \
-                                                          &GufuncObject_type, guobj_p)
-static void
-GufuncObject_dfree(void *self)
-{
-  GufuncObject *guobj = (GufuncObject*)self;
-
-  ndt_free(guobj->name);
-}
-
-static size_t
-GufuncObject_dsize(const void *self)
-{
-  return sizeof(GufuncObject);
-}
-
-static const rb_data_type_t GufuncObject_type = {
-  .wrap_struct_name = "GufuncObject",
-  .function = {
-    .dmark = NULL,
-    .dfree = GufuncObject_dfree,
-    .dsize = GufuncObject_dsize,
-    .reserved = {0,0},
-  },
-  .parent = 0,
-  .flags = RUBY_TYPED_FREE_IMMEDIATELY,
-};
-
-static VALUE
-GufuncObject_alloc(const gm_tbl_t *table, const char *name)
-{
-  NDT_STATIC_CONTEXT(ctx);
-  GufuncObject *guobj_p;
-  VALUE guobj;
-
-  guobj = MAKE_GUOBJ(cGumath_GufuncObject, guobj_p);
-  guobj_p->table = table;
-  guobj_p->name = ndt_strdup(name, &ctx);
-  if (guobj_p->name == NULL) {
-    seterr(&ctx);
-  }
-
-  return guobj;
 }
 
 /****************************************************************************/
