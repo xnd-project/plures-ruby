@@ -22,11 +22,17 @@ So there shuold be two kinds:
 * Simple errors 
 * Deeper, more complex errors.
 
-
 Links:
 
 * http://clalance.blogspot.com/2011/01/writing-ruby-extensions-in-c-part-5.html
-    rb_set_errinfo(rb_exc_new2(rb_eAllocError, ))
+
+## Error handling in C APIs of Ruby C extensions
+
+None of the C APIs will ever raise a Ruby error. Error conditions are indicated by the
+return value of the function. The error values are as follows:
+
+* Success - 
+* Failure - 
 
 # Differences between Python and Ruby wrappers
 

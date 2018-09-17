@@ -51,3 +51,7 @@ ndtypes/lib/ruby_ndtypes.so
 gumath/tmp/
 gumath/Gemfile.lock
 gumath/lib/ruby_gumath.so
+
+GPATH
+GRTAGS
+GTAGS

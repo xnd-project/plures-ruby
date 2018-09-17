@@ -158,7 +158,7 @@ class XND < RubyXND
 
         ret
       end
-
+      
       def accumulate arr
         result = []
         arr.inject(0) do |memo, a|

@@ -38,6 +38,17 @@
 #ifndef GUMATH_UTIL_H
 #define GUMATH_UTIL_H
 
+static inline VALUE
+array_new(int64_t size)
+{
+#if SIZE_MAX < INT64_MAX
+    size_t n = safe_downcast(size);
+    return n < 0 ? NULL : rb_ary_new2(n);
+#else
+    return rb_ary_new2(size);
+#endif
+}
+
 static inline int
 xnd_exists(void)
 {

@@ -1853,7 +1853,7 @@ rb_xnd_const_xnd(VALUE xnd)
 
 /* Creae a new XND object from xnd_t type.  */
 VALUE
-rb_xnd_from_xnd(VALUE type, xnd_t *x)
+rb_xnd_from_xnd(xnd_t *x)
 {
   VALUE mblock, xnd;
   XndObject *xnd_p;
@@ -1868,16 +1868,24 @@ rb_xnd_from_xnd(VALUE type, xnd_t *x)
   return xnd;
 }
 
+/* Create an XND object of type ndt_t */
 VALUE
 rb_xnd_empty_from_type(ndt_t *t)
 {
   MemoryBlockObject *mblock_p;
-  VALUE type, mblock;
+  XndObject *xnd_p;
+  VALUE type, mblock, xnd;
 
   type = rb_ndtypes_from_type(t);
   mblock = mblock_empty(type);
+  xnd = XndObject_alloc();
 
-  return XND_from_mblock()
+  GET_XND(xnd, xnd_p);
+  rb_xnd_gc_guard_register(xnd_p, mblock);
+
+  XND_from_mblock(xnd_p, mblock);
+
+  return xnd;
 }
 
 VALUE
@@ -1892,13 +1900,13 @@ rb_xnd_get_type(void)
  *   a) A pristine view that owns everything, including new memory.
  *   b) A view that owns its type after xnd_subscript().
  */
-VALUE
-rb_xnd_from_xnd_view(xnd_view_t *x)
-{
-  if (x->obj == NULL && (x->flags & XND_OWN_ALL) == XND_OWN_ALL) {
-    VALUE type = rb_xnd_get_type();
-  }
-}
+/* VALUE */
+/* rb_xnd_from_xnd_view(xnd_view_t *x) */
+/* { */
+/*   if (x->obj == NULL && (x->flags & XND_OWN_ALL) == XND_OWN_ALL) { */
+/*     VALUE type = rb_xnd_get_type(); */
+/*   } */
+/* } */
 
 void Init_ruby_xnd(void)
 {

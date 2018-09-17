@@ -134,8 +134,9 @@ Gumath_GufuncObject_call(int argc, VALUE *argv, VALUE self)
   gm_kernel_t kernel;
   ndt_apply_spec_t spec = ndt_apply_spec_empty;
   GufuncObject *self_p;
-  VALUE x;
+  VALUE x, result[NDT_MAX_ARGS];
   int i, k;
+  size_t nin = argc;
 
   if (argc > NDT_MAX_ARGS) {
     rb_raise(rb_eArgError, "too many arguments.");
@@ -168,9 +169,63 @@ Gumath_GufuncObject_call(int argc, VALUE *argv, VALUE self)
     if (ndt_is_concrete(spec.out[i])) {
       x = rb_xnd_empty_from_type(spec.out[i]);
       if (x == NULL) {
-        
+        ndt_apply_spec_clear(&spec);
+        rb_raise(rb_eNoMemError, "could not allocate empty XND object.");
       }
+      result[i] = x;
+      stack[nin+i] = *rb_xnd_const_xnd(x);
     }
+    else {
+      result[i] = NULL;
+      stack[nin+i] = xnd_error;
+    }
+  }
+
+#ifdef HAVE_PTHREAD_H
+  if (gm_apply_thread(&kernel, stack, spec.outer_dims, spec.flags,
+                      max_threads, &ctx) < 0) {
+    seterr(&ctx);
+    raise_error();
+  }
+#else
+  if (gm_apply(&kernel, stack, spec.outer_dims, &ctx) < 0) {
+    seterr(&ctx);
+    raise_error();
+  }
+#endif
+
+  for (i = 0; i < spec.nout; i++) {
+    if (ndt_is_abstract(spec.out[i])) {
+      ndt_del(spec.out[i]);
+      VALUE x = rb_xnd_from_xnd(&stack[nin+i]);
+      stack[nin+i] = xnd_error;
+      if (x == NULL) {
+        for (k = i+i; k < spec.nout; k++) {
+          if (ndt_is_abstract(spec.out[k])) {
+            xnd_del_buffer(&stack[nin+k], XND_OWN_ALL);
+          }
+        }
+      }
+      result[i] = x;
+    }
+  }
+
+  if (spec.nbroadcast > 0) {
+    for (i = 0; i < nin; ++i) {
+      ndt_del(spec.broadcast[i]);
+    }
+  }
+
+  switch(spec.nout) {
+  case 0: return Qnil;
+  case 1: return result[0];
+  default: {
+    VALUE tuple = array_new(spec.nout);
+    for (i = 0; i < spec.nout; ++i) {
+      rb_ary_store(tuple, i, result[i]);
+    }
+    return tuple;
+  }
   }
 }
 

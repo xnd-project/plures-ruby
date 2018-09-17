@@ -44,6 +44,7 @@ ranges for references arrays:
 
 Short term goals:
 
-* Complete support for XND, NDT and gumath.
-* Finish each, to_s and match functions in XND.
+* Refactor C extensions and make them complaint with code conventions.
+* Better file segregation for C extensions.
 * Move from rspec to unittest.
+* Finish to_s and match functions in XND.
