@@ -17,7 +17,7 @@ basenames = %w{gufunc_object functions ruby_gumath}
 $objs = basenames.map { |b| "#{b}.o"   }
 $srcs = basenames.map { |b| "#{b}.c" }
 
-$CFLAGS += " -fPIC -g "
+$CFLAGS += " -Wall -O0 -fPIC -g "
 # FIXME: This is jugaad. Remove on deploy.
 $libs += " -lndtypes -lxnd -lgumath "
 create_makefile("ruby_gumath/ruby_gumath")

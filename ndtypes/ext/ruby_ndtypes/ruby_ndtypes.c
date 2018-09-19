@@ -197,7 +197,7 @@ NdtObject_alloc(void)
   ndt_p->rbuf = 0;
   ndt_p->ndt = NULL;
 
-  return MAKE_NDT(cNDTypes, ndt_p);
+  return WRAP_NDT(cNDTypes, ndt_p);
 }
 
 /* GC mark the NdtObject struct. */

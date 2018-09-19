@@ -61,7 +61,7 @@ seterr(ndt_context_t *ctx)
 void
 obj_inspect(const char* msg, VALUE obj)
 {
-  VALUE insp = rb_funcall(obj, rb_intern("inspect"), NULL, 0);
+  VALUE insp = rb_funcall(obj, rb_intern("inspect"), 0, NULL);
   printf("%s %s\n.", msg, StringValuePtr(insp));
 }
 #endif

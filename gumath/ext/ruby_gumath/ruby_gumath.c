@@ -72,7 +72,7 @@ Gumath_GufuncObject_call(int argc, VALUE *argv, VALUE self)
   gm_kernel_t kernel;
   ndt_apply_spec_t spec = ndt_apply_spec_empty;
   GufuncObject *self_p;
-  VALUE x, result[NDT_MAX_ARGS];
+  VALUE result[NDT_MAX_ARGS];
   int i, k;
   size_t nin = argc;
 
@@ -80,15 +80,18 @@ Gumath_GufuncObject_call(int argc, VALUE *argv, VALUE self)
     rb_raise(rb_eArgError, "too many arguments.");
   }
 
+  /* Prepare arguments for sending into gumath function. */
   for (i = 0; i < argc; i++) {
     if (!rb_xnd_check_type(argv[i])) {
-      rb_raise(rb_eArgError, "Args must be XND.");
+      VALUE str = rb_funcall(argv[i], rb_intern("inspect"), 0, NULL);
+      rb_raise(rb_eArgError, "Args must be XND. Received %s.", RSTRING_PTR(str));
     }
 
     stack[i] = *rb_xnd_const_xnd(argv[i]);
     in_types[i] = stack[i].type;
   }
 
+  /* Select the gumath function to be called from the function table. */
   GET_GUOBJ(self, self_p);
 
   kernel = gm_select(&spec, self_p->table, self_p->name, in_types, argc, stack, &ctx);
@@ -103,9 +106,10 @@ Gumath_GufuncObject_call(int argc, VALUE *argv, VALUE self)
     }
   }
 
+  /* Populate output values with empty XND objects. */
   for (i = 0; i < spec.nout; i++) {
     if (ndt_is_concrete(spec.out[i])) {
-      x = rb_xnd_empty_from_type(spec.out[i]);
+      VALUE x = rb_xnd_empty_from_type(spec.out[i]);
       if (x == NULL) {
         ndt_apply_spec_clear(&spec);
         rb_raise(rb_eNoMemError, "could not allocate empty XND object.");
@@ -119,6 +123,7 @@ Gumath_GufuncObject_call(int argc, VALUE *argv, VALUE self)
     }
   }
 
+  /* Actually call the kernel function with prepared input and output args. */
 #ifdef HAVE_PTHREAD_H
   if (gm_apply_thread(&kernel, stack, spec.outer_dims, spec.flags,
                       max_threads, &ctx) < 0) {

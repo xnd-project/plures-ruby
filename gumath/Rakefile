@@ -51,7 +51,7 @@ VALGRIND_MEMORYFILL_OPTIONS = [
 desc "Run specs under Valgrind."
 task :valgrind => [ :compile ] do |task|
   cmd = [ 'valgrind' ] + VALGRIND_OPTIONS
-  cmd += " rake test"
+  cmd += [" rake test "]
   run( *cmd )
 end
 

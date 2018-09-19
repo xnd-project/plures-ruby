@@ -51,7 +51,7 @@ mGumath_Functions_s_method_missing(int argc, VALUE *argv, VALUE module)
   int is_present = RTEST(gumath_method);
   
   if (is_present) {
-    rb_funcall(gumath_method, rb_intern("call"), argc-1, &argv[1]);
+    rb_funcall2(gumath_method, rb_intern("call"), argc-1, &argv[1]);
   }
   else {
     VALUE str = rb_funcall(method_name, rb_intern("to_s"), 0, NULL);

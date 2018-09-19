@@ -27,5 +27,3 @@ class TestCall < Minitest::Test
   end
 end
 
-
-
