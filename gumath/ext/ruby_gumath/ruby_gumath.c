@@ -295,4 +295,5 @@ void Init_ruby_gumath(void)
   rb_define_method(cGumath_GufuncObject, "call", Gumath_GufuncObject_call,-1);
   
   Init_gumath_functions();
+  Init_gumath_examples();
 }
