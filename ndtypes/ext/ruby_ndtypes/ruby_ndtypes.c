@@ -483,6 +483,36 @@ NDTypes_neq(VALUE self, VALUE other)
   }
 }
 
+/* Implement NDT#hidden_dtype */
+static VALUE
+NDTypes_hidden_dtype(VALUE self)
+{
+  NDT_STATIC_CONTEXT(ctx);
+  NdtObject *self_p;
+
+  GET_NDT(self, self_p);
+  
+  const ndt_t *t = NDT(self_p);
+  const ndt_t *dtype;
+  ndt_t *u;
+
+  dtype = ndt_hidden_dtype(t);
+
+  u = ndt_copy(dtype, &ctx);
+  if (u == NULL) {
+    seterr(&ctx);
+    raise_error();
+  }
+
+  return rb_ndtypes_from_type(u);
+}
+
+static VALUE
+NDTypes_match(VALUE self, VALUE other)
+{
+  
+}
+
 /****************************************************************************/
 /*                                  Class methods                           */
 /****************************************************************************/
@@ -592,11 +622,15 @@ NDTypes_s_instantiate(VALUE klass, VALUE name, VALUE type)
     raise_error();
   }
 
+  printf("post ndt_coptyu.\n");
+
   t = ndt_nominal(cp, tp, &ctx);
   if (t == NULL) {
     seterr(&ctx);
-    raise_error();    
+    raise_error();
   }
+
+  printf("ndt nominal post.\n");
 
   return rb_ndtypes_move_subtree(type, t);
 }
@@ -778,6 +812,8 @@ void Init_ruby_ndtypes(void)
   rb_define_method(cNDTypes, "datasize", NDTypes_datasize, 0);
   rb_define_method(cNDTypes, "align", NDTypes_align, 0);
   rb_define_method(cNDTypes, "to_s", NDTypes_to_s, 0);
+  rb_define_method(cNDTypes, "hidden_dtype", NDTypes_hidden_dtype, 0);
+  rb_define_method(cNDTypes, "match", NDTypes_match, 1);
 
   /* Boolean functions */
   rb_define_method(cNDTypes, "concrete?", NDTypes_ndt_is_concrete, 0);

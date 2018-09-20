@@ -24,8 +24,8 @@ class TestCall < Minitest::Test
     TEST_CASES.each do |data, t, dtype|
       x = XND.new data, type: t
       y = Fn.sin x
-
-      sinned = data.map { |d| Math.sin(d) }
+      
+      sinned = compute :sin, data
 
       assert_array_in_delta y.value, sinned, 0.00001
     end

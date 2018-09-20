@@ -288,7 +288,7 @@ class XND < RubyXND
       type = NDTypes.new typedef
       if type.abstract?
         dtype = type.hidden_dtype
-        t = TypeInference.type_of value, dtype: dtype
+        t = TypeInference.type_of data, dtype: dtype
         type = NDTypes.instantiate typedef, t
       end
     elsif dtypedef

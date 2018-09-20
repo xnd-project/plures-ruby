@@ -41,8 +41,11 @@ end
 def assert_array_in_delta arr1, arr2, delta
   assert_equal arr1.size, arr2.size
 
-  arr1.each.with_index do |d, i|
-    assert_in_delta arr1[i], arr2[i], delta
+  flat1 = arr1.flatten
+  flat2 = arr2.flatten
+  
+  flat1.each_with_index do |d, i|
+    assert_in_delta flat1[i], flat2[i], delta
   end
 end
 
@@ -52,5 +55,15 @@ def assert_array arr1, arr2
 
   arr1.size.times do |i|
     assert_equal arr1[i], arr2[i]
+  end
+end
+
+def compute func, data
+  if data.is_a? Array
+    data = data.map do |d|
+      compute func, d
+    end
+  else
+    Math.send(func, data)
   end
 end

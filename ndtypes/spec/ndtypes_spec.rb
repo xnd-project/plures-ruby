@@ -255,6 +255,12 @@ describe NDTypes do
     end
   end
 
+  context "#hidden_dtype" do
+    it "has hidden type" do
+      
+    end
+  end
+
   context ".deserialize" do
     it "deserializes the NDT object" do 
       s = NDTypes.new "3 * char"
