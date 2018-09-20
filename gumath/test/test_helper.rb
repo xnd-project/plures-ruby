@@ -32,12 +32,6 @@ class Graph < XND
   end
 end
 
-class BFloat16 < XND
-  def initialize *args
-    super(*args, dtypedef: "bfloat16")
-  end
-end
-
 def assert_array_in_delta arr1, arr2, delta
   assert_equal arr1.size, arr2.size
 

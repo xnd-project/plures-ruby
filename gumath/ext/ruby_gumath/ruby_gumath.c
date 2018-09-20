@@ -37,6 +37,12 @@ const void *dummy = NULL;
 /*                              Class globals                               */
 /****************************************************************************/
 
+VALUE
+seterr(ndt_context_t *ctx)
+{
+  return rb_ndtypes_set_error(ctx);
+}
+
 /* Function table */
 static gm_tbl_t *table = NULL;
 
@@ -53,11 +59,6 @@ extern VALUE cGumath;
 /*                               Error handling                             */
 /****************************************************************************/
 
-static VALUE
-seterr(ndt_context_t *ctx)
-{
-  return rb_ndtypes_set_error(ctx);
-}
 
 /****************************************************************************/
 /*                               Instance methods                           */

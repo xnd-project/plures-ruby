@@ -63,7 +63,13 @@ class TestCall < Minitest::Test
     x = XND.new data, type: "3 * quaternion64"
     y = Ex.multiply x, x
 
-    
+    # FIXME: how to do einsum in Ruby?
+
+    x = XND.new data, type: "3 * quaternion128"
+    y = Ex.multiply x, x
+
+    x = XND.new "xyz"
+    assert_raises(TypeError) { Ex.multiply x, x }
   end
 
   def test_quaternion_error
@@ -182,16 +188,6 @@ class TestGraphs < Minitest::Test
     ]
 
     assert_raises(ValueError) { Graph.new(data) }
-  end
-end
-
-class TestBFloat16 < Minitest::Test
-  def test_init
-    lst = [1.2e10, 2.1121, -3e20]
-    ans = [11945377792.0, 2.109375, -2.997595911977802e+20]
-    x = BFloat16.new lst
-
-    assert_equal x.value, ans
   end
 end
 

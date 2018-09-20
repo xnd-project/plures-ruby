@@ -42,7 +42,4 @@
 #include "ruby_gumath.h"
 #include "util.h"
 
-/* Classes */
-VALUE cGumath;
-
 #endif  /* RUBY_GUMATH_INTERNAL_H */

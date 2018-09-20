@@ -30,44 +30,19 @@
  */
 
 /* 
-   Utility functions for gumath. Functions should be inlined.
-
-   https://stackoverflow.com/questions/8201944/multiple-definition-and-header-only-libraries
- */
+   Utility functions for gumath.
+*/
 
 #ifndef GUMATH_UTIL_H
 #define GUMATH_UTIL_H
 
-static inline VALUE
-array_new(int64_t size)
-{
-#if SIZE_MAX < INT64_MAX
-    size_t n = safe_downcast(size);
-    return n < 0 ? NULL : rb_ary_new2(n);
-#else
-    return rb_ary_new2(size);
-#endif
-}
+VALUE array_new(int64_t size);
 
-static inline int
-xnd_exists(void)
-{
-  return RTEST(rb_const_get(rb_cObject, rb_intern("XND")));
-}
+int xnd_exists(void);
 
-static inline int
-ndt_exists(void)
-{
-  return RTEST(rb_const_get(rb_cObject, rb_intern("NDT")));
-}
+int ndt_exists(void);
 
 /* Raise an error stored in $!. Clears it before raising. */
-inline void
-raise_error(void)
-{
-  VALUE exeception = rb_errinfo();
+void raise_error(void);
 
-  rb_set_errinfo(Qnil);
-  rb_exc_raise(exeception);
-}
 #endif  /* GUMATH_UTIL_H */

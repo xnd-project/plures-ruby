@@ -622,15 +622,11 @@ NDTypes_s_instantiate(VALUE klass, VALUE name, VALUE type)
     raise_error();
   }
 
-  printf("post ndt_coptyu.\n");
-
   t = ndt_nominal(cp, tp, &ctx);
   if (t == NULL) {
     seterr(&ctx);
     raise_error();
   }
-
-  printf("ndt nominal post.\n");
 
   return rb_ndtypes_move_subtree(type, t);
 }

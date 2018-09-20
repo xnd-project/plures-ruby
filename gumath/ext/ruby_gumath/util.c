@@ -29,13 +29,40 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RUBY_GUMATH_H
-#define RUBY_GUMATH_H
+/* 
+   Utility functions for gumath. 
+*/
+#include "ruby_gumath_internal.h"
 
-/* Classes */
-VALUE cGumath;
+VALUE
+array_new(int64_t size)
+{
+#if SIZE_MAX < INT64_MAX
+    size_t n = safe_downcast(size);
+    return n < 0 ? NULL : rb_ary_new2(n);
+#else
+    return rb_ary_new2(size);
+#endif
+}
 
-int rb_gumath_add_functions(VALUE module, const gm_tbl_t *tbl);
-#define GUMATH_FUNCTION_HASH rb_intern("@gumath_functions")
+int
+xnd_exists(void)
+{
+  return RTEST(rb_const_get(rb_cObject, rb_intern("XND")));
+}
 
-#endif  /* RUBY_GUMATH_H */
+int
+ndt_exists(void)
+{
+  return RTEST(rb_const_get(rb_cObject, rb_intern("NDT")));
+}
+
+/* Raise an error stored in $!. Clears it before raising. */
+void
+raise_error(void)
+{
+  VALUE exeception = rb_errinfo();
+
+  rb_set_errinfo(Qnil);
+  rb_exc_raise(exeception);
+}
