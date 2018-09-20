@@ -17,6 +17,6 @@ basenames = %w{gc_guard ruby_ndtypes}
 $objs = basenames.map { |b| "#{b}.o"   }
 $srcs = basenames.map { |b| "#{b}.c" }
 
-$CFLAGS += " -g "
+$CFLAGS += " -O0 -g "
 create_makefile("ruby_ndtypes/ruby_ndtypes")
 

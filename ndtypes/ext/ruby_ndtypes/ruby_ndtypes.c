@@ -23,7 +23,7 @@ static VALUE rb_eValueError;
 /****************************************************************************/
 
 /* Raise an error stored in $!. Clears it before raising. */
-inline void
+static void
 raise_error(void)
 {
   VALUE exeception = rb_errinfo();
@@ -32,7 +32,7 @@ raise_error(void)
   rb_exc_raise(exeception);
 }
 
-inline void
+static void
 set_error_info(VALUE err, const char * msg)
 {
   rb_set_errinfo(rb_exc_new2(err, msg));
@@ -341,6 +341,10 @@ NDTypes_from_object(VALUE self, VALUE type)
   const char *cp;
   NdtObject *ndt_p;
 
+  if (NDT_CHECK_TYPE(type)) {
+    return type;
+  }
+
   cp = StringValuePtr(type);
 
   GET_NDT(self, ndt_p);
@@ -368,6 +372,8 @@ NDTypes_from_offsets_and_dtype(VALUE offsets, VALUE type)
   NdtObject *self_p;
   const char *cp;
 
+  Check_Type(type, T_STRING);
+
   cp = StringValuePtr(type);
 
   self = NdtObject_alloc();
@@ -389,7 +395,8 @@ NDTypes_initialize(int argc, VALUE *argv, VALUE self)
   NDT_STATIC_CONTEXT(ctx);
   
   if (argc < 1) {
-    rb_raise(rb_eArgError, "expected atleast type. offset optional.");
+    rb_raise(rb_eArgError, "expected atleast type. offset optional. Number of args: %d.",
+             argc);
   }
 
   type = argv[0];
@@ -397,9 +404,6 @@ NDTypes_initialize(int argc, VALUE *argv, VALUE self)
     offsets = argv[1];
   }
 
-  Check_Type(type, T_STRING);
-
-  /* TODO: parse kwargs with offsets. */  
   if (offsets == Qnil) {
     return NDTypes_from_object(self, type);
   }
@@ -516,6 +520,13 @@ NDTypes_itemsize(VALUE self)
   return LL2NUM(size);
 }
 
+void
+obj_inspect(const char* msg, VALUE obj)
+{
+  VALUE insp = rb_funcall(obj, rb_intern("inspect"), 0, NULL);
+  printf("%s %s\n.", msg, StringValuePtr(insp));
+}
+
 /* Implement #align */
 static VALUE
 NDTypes_align(VALUE self)
@@ -536,10 +547,16 @@ NDTypes_align(VALUE self)
 static int
 NDTypes_compare(VALUE self, VALUE other)
 {
-  NdtObject *self_p, *other_p;
+  NdtObject *self_p = NULL, *other_p = NULL;
 
+  printf("inspector is here.\n");
+  obj_inspect("self: ", self);
+  obj_inspect("other: ", other);
+  
   GET_NDT(self, self_p);
+  printf("got the pointer for self. %ld.\n", NDT(self_p));
   GET_NDT(other, other_p);
+  printf("got the pointer for other. %ld.\n", NDT(other_p));
 
   return ndt_equal(NDT(self_p), NDT(other_p));  
 }
@@ -625,6 +642,18 @@ NDTypes_match(VALUE self, VALUE other)
   }
 
   return INT2BOOL(res);
+}
+
+static VALUE
+NDTypes_dup(VALUE self)
+{
+  
+}
+
+static VALUE
+NDTypes_ast(VALUE self)
+{
+  
 }
 
 /****************************************************************************/
@@ -882,7 +911,7 @@ rb_ndtypes_from_object(VALUE type)
                                           rbuf_ndt_meta(copy),
                                           cp, &ctx);
   if (NDT(copy_p) == NULL) {
-    set_error_info(seterr(&ctx), "error in rb_ndtypes_from_object.");
+    seterr(&ctx);
     raise_error();
   }
   rb_ndtypes_gc_guard_register(copy_p, RBUF(copy_p));
@@ -913,7 +942,7 @@ void Init_ruby_ndtypes(void)
 
   /* Initializers */
   rb_define_alloc_func(cNDTypes, NDTypes_allocate);
-  rb_define_method(cNDTypes, "initialize", NDTypes_initialize, 1);
+  rb_define_method(cNDTypes, "initialize", NDTypes_initialize, -1);
 
   /* Instance methods */
   rb_define_method(cNDTypes, "serialize", NDTypes_serialize, 0);
@@ -924,6 +953,8 @@ void Init_ruby_ndtypes(void)
   rb_define_method(cNDTypes, "to_s", NDTypes_to_s, 0);
   rb_define_method(cNDTypes, "hidden_dtype", NDTypes_hidden_dtype, 0);
   rb_define_method(cNDTypes, "match", NDTypes_match, 1);
+  rb_define_method(cNDTypes, "dup", NDTypes_dup, 0);
+  rb_define_method(cNDTypes, "ast", NDTypes_ast, 0);
 
   /* Boolean functions */
   rb_define_method(cNDTypes, "concrete?", NDTypes_ndt_is_concrete, 0);
