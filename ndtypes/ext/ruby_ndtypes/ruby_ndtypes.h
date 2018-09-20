@@ -28,6 +28,8 @@ VALUE rb_ndtypes_from_object(VALUE type);
 VALUE rb_ndtypes_set_error(ndt_context_t *ctx);
 VALUE rb_ndtypes_from_type(ndt_t *type);
 
+#define INT2BOOL(t) (t ? Qtrue : Qfalse)
+
 #if defined(__cplusplus)
 } /* extern "C" { */
 #endif

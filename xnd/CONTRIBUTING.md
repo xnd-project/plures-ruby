@@ -40,11 +40,3 @@ ranges for references arrays:
 * Full range (`0..Float::INFINITY`) : `INF`.
 * Part range (`4..Float::INFINITY`) : `4..INF`.
 
-# Roadmap
-
-Short term goals:
-
-* Refactor C extensions and make them complaint with code conventions.
-* Better file segregation for C extensions.
-* Move from rspec to unittest.
-* Finish to_s and match functions in XND.

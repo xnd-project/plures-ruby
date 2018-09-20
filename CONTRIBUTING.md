@@ -72,3 +72,15 @@ NDT -> RBUF
 
 In XND:
 XND -> MBLOCK
+
+# Roadmap
+
+Short term goals:
+
+* Segregate into separate repos and release usable ruby gems.
+* Sharing buffer pointers between XND and other library.
+* Usage and installation docs for all extensions.
+* Better file segregation for C extensions.
+* Move from rspec to minitest for all extensions.
+* Finish to_s and match functions in XND.
+* Write Ruby kernel generator.

@@ -144,12 +144,72 @@ rbuf_allocate(void)
 
   self->m = ndt_meta_new(&ctx);
   if (self->m == NULL) {
-    
+    rb_raise(rb_eNoMemError, "cannot allocate rbuf object.");
   }
-  return TypedData_Make_Struct(cNDTypes_RBuf,
-                               ResourceBufferObject,
-                               &ResourceBufferObject_type,
-                               self);
+  
+  return WRAP_RBUF(cNDTypes_RBuf, self);
+}
+
+static int
+rbuf_init_from_offset_list(ResourceBufferObject *rbuf, VALUE list)
+{
+  ndt_meta_t * const m = rbuf->m;
+  VALUE lst;
+
+  Check_Type(list, T_ARRAY);
+
+  const int64_t n = RARRAY_LEN(list);
+  if (n < 1 || n > NDT_MAX_DIM) {
+    rb_raise(rb_eValueError, "number of offset lists must be in [1, %d].",
+             NDT_MAX_DIM);
+  }
+
+  m->ndims = 0;
+  for (int64_t i = n-1; i >= 0; i--) {
+    lst = rb_ary_entry(list, i);
+    if (!RB_TYPE_P(lst, T_ARRAY)) {
+      rb_raise(rb_eTypeError, "expected a list of offset lists.");
+    }
+
+    const int64_t noffsets = RARRAY_LEN(lst);
+    if (noffsets < 2 || noffsets > INT32_MAX) {
+      rb_raise(rb_eValueError, "length of a single offset must be in [2, INT32_MAX].");
+    }
+
+    int32_t * const offsets = ndt_alloc(noffsets, sizeof(int32_t));
+    if (offsets == NULL) {
+      rb_raise(rb_eNoMemError, "could not allocate offsets.");
+    }
+
+    for (int32_t k = 0; k < noffsets; k++) {
+      long long x = NUM2LL(rb_ary_entry(lst, k));
+      if (x == -1 || x < 0 || x > INT32_MAX) {
+        ndt_free(offsets);
+        rb_raise(rb_eValueError, "offset must be in [0, INT32_MAX].");
+      }
+
+      offsets[k] = (int32_t)x;
+    }
+
+    m->noffsets[m->ndims] = (int32_t)noffsets;
+    m->offsets[m->ndims] = offsets;
+    m->ndims++;
+  }
+
+  return 0;
+}
+
+static VALUE
+rbuf_from_offset_lists(VALUE list)
+{
+  VALUE rbuf;
+  ResourceBufferObject * rbuf_p;
+
+  rbuf = rbuf_allocate();
+  GET_RBUF(rbuf, rbuf_p);
+  rbuf_init_from_offset_list(rbuf_p, list);
+
+  return rbuf;
 }
 
 /******************************************************************************/
@@ -274,24 +334,14 @@ NDTYPES_BOOL_FUNC(ndt_is_complex)
 NDTYPES_BOOL_FUNC(ndt_is_c_contiguous)
 NDTYPES_BOOL_FUNC(ndt_is_f_contiguous)
 
-/* Initialize an instance of an NDTypes object. */
 static VALUE
-NDTypes_initialize(VALUE self, VALUE type)
+NDTypes_from_object(VALUE self, VALUE type)
 {
-  NdtObject *ndt_p;
-  VALUE offsets = Qnil;
-  const char *cp;
-
-  /* TODO: parse kwargs with offsets. */
-    
   NDT_STATIC_CONTEXT(ctx);
-
-  Check_Type(type, T_STRING);
+  const char *cp;
+  NdtObject *ndt_p;
 
   cp = StringValuePtr(type);
-  if (cp == NULL) {
-    
-  }
 
   GET_NDT(self, ndt_p);
   RBUF(ndt_p) = rbuf_allocate();
@@ -307,7 +357,54 @@ NDTypes_initialize(VALUE self, VALUE type)
     raise_error();
   }
 
+  return self; 
+}
+
+static VALUE
+NDTypes_from_offsets_and_dtype(VALUE offsets, VALUE type)
+{
+  NDT_STATIC_CONTEXT(ctx);
+  VALUE self;
+  NdtObject *self_p;
+  const char *cp;
+
+  cp = StringValuePtr(type);
+
+  self = NdtObject_alloc();
+  GET_NDT(self, self_p);
+  RBUF(self_p) = rbuf_from_offset_lists(offsets);
+  NDT(self_p) = ndt_from_metadata_and_dtype(rbuf_ndt_meta(self_p), cp, &ctx);
+
+  rb_ndtypes_gc_guard_register(self_p, RBUF(self_p));
+
   return self;
+}
+
+/* Initialize an instance of an NDTypes object. */
+static VALUE
+NDTypes_initialize(int argc, VALUE *argv, VALUE self)
+{
+  NdtObject *ndt_p;
+  VALUE offsets = Qnil, type;
+  NDT_STATIC_CONTEXT(ctx);
+  
+  if (argc < 1) {
+    rb_raise(rb_eArgError, "expected atleast type. offset optional.");
+  }
+
+  type = argv[0];
+  if (argc == 2) {
+    offsets = argv[1];
+  }
+
+  Check_Type(type, T_STRING);
+
+  /* TODO: parse kwargs with offsets. */  
+  if (offsets == Qnil) {
+    return NDTypes_from_object(self, type);
+  }
+
+  return NDTypes_from_offsets_and_dtype(offsets, type);
 }
 
 /* String representation of the type. */
@@ -510,7 +607,24 @@ NDTypes_hidden_dtype(VALUE self)
 static VALUE
 NDTypes_match(VALUE self, VALUE other)
 {
-  
+  NDT_STATIC_CONTEXT(ctx);
+  int res;
+  NdtObject *self_p, *other_p;
+
+  if (!NDT_CHECK_TYPE(other)) {
+    rb_raise(rb_eTypeError, "argument must be of type NDT.");
+  }
+
+  GET_NDT(self, self_p);
+  GET_NDT(other, other_p);
+
+  res = ndt_match(NDT(self_p), NDT(other_p), &ctx);
+  if (res == -1) {
+    seterr(&ctx);
+    raise_error();
+  }
+
+  return INT2BOOL(res);
 }
 
 /****************************************************************************/
@@ -683,7 +797,7 @@ rb_ndtypes_make_ndt_object(NdtObject *ndt_p)
 VALUE
 rb_ndtypes_wrap_ndt_object(void)
 {
-  NdtObject *ndt_p;
+  NdtObject *ndt_p = NULL;
 
   return WRAP_NDT(cNDTypes, ndt_p);
 }

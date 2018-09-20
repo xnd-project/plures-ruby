@@ -37,21 +37,11 @@ const void *dummy = NULL;
 /*                              Class globals                               */
 /****************************************************************************/
 
-VALUE
-seterr(ndt_context_t *ctx)
-{
-  return rb_ndtypes_set_error(ctx);
-}
-
 /* Function table */
 static gm_tbl_t *table = NULL;
 
-/* Xnd type */
-static  XndObject *xnd = NULL;
-
 /* Maximum number of threads */
 static int64_t max_threads = 1;
-
 static int initialized = 0;
 extern VALUE cGumath;
 
@@ -59,6 +49,11 @@ extern VALUE cGumath;
 /*                               Error handling                             */
 /****************************************************************************/
 
+VALUE
+seterr(ndt_context_t *ctx)
+{
+  return rb_ndtypes_set_error(ctx);
+}
 
 /****************************************************************************/
 /*                               Instance methods                           */
@@ -138,6 +133,7 @@ Gumath_GufuncObject_call(int argc, VALUE *argv, VALUE self)
   }
 #endif
 
+  /* Prepare output XND objects. */
   for (i = 0; i < spec.nout; i++) {
     if (ndt_is_abstract(spec.out[i])) {
       ndt_del(spec.out[i]);
@@ -160,6 +156,7 @@ Gumath_GufuncObject_call(int argc, VALUE *argv, VALUE self)
     }
   }
 
+  /* Return result */
   switch(spec.nout) {
   case 0: return Qnil;
   case 1: return result[0];
@@ -180,7 +177,7 @@ Gumath_GufuncObject_call(int argc, VALUE *argv, VALUE self)
 static VALUE
 Gumath_s_unsafe_add_kernel(int argc, VALUE *argv, VALUE klass)
 {
-  
+  /* TODO: implement this. */
 }
 
 static VALUE
@@ -192,7 +189,9 @@ Gumath_s_get_max_threads(VALUE klass)
 static VALUE
 Gumath_s_set_max_threads(VALUE klass, VALUE threads)
 {
+  Check_Type(threads, T_FIXNUM);
   
+  max_threads = NUM2INT(threads);
 }
 
 /****************************************************************************/
@@ -202,8 +201,9 @@ Gumath_s_set_max_threads(VALUE klass, VALUE threads)
 static void
 init_max_threads(void)
 {
-  max_threads = NUM2INT(rb_funcall(rb_const_get(rb_cObject, rb_intern("Etc")),
-                               rb_intern("nprocessors"), NULL, 0));
+  VALUE rb_max_threads = rb_funcall(rb_const_get(rb_cObject, rb_intern("Etc")),
+                                    rb_intern("nprocessors"), 0, NULL);
+  max_threads = NUM2INT(rb_max_threads);
 }
 
 /****************************************************************************/
@@ -275,11 +275,6 @@ void Init_ruby_gumath(void)
     initialized = 1;
   }
 
-  //  xnd = rb_xnd_get_type();
-  if (xnd == NULL) {
-    /* TODO: raise error here. */
-  }
-  
   cGumath = rb_define_class("Gumath", rb_cObject);
   cGumath_GufuncObject = rb_define_class_under(cGumath, "GufuncObject", rb_cObject);
     
