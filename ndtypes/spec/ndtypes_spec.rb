@@ -64,11 +64,9 @@ describe NDTypes do
       ].each do |s|
         it "type: #{s}" do
           t = NDT.new s
-          puts "created object t: #{t.inspect}."
           u = NDT.new t
-          puts "created object u: #{u.inspect}."
 
-          expect(u).to eq(t)          
+          expect(u).to eq(t)
         end
       end
 
@@ -273,7 +271,7 @@ describe NDTypes do
     end
   end
 
-  context "#dup", focus: true do
+  context "#dup" do
     DTYPE_TEST_CASES.each do |dtype, mem|
       it "dtype: #{dtype}" do
         t = NDT.new dtype

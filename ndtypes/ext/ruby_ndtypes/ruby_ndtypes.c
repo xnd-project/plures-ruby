@@ -97,7 +97,7 @@ typedef struct ResourceBufferObject {
     TypedData_Get_Struct((obj), ResourceBufferObject,           \
                          &ResourceBufferObject_type, (rbuf_p)); \
 } while (0)
-#define RBUF_NDT_M(rbuf_p) (ResourceBufferObject*)(rbuf_p->m)
+#define RBUF_NDT_M(rbuf_p) ((ndt_meta_t*)(rbuf_p->m))
 #define MAKE_RBUF(self, rbuf_p) TypedData_Make_Struct(self, ResourceBufferObject, \
                                                       &ResourceBufferObject_type, rbuf_p)
 #define WRAP_RBUF(self, rbuf_p) TypedData_Wrap_Struct(self,             \
@@ -342,7 +342,7 @@ NDTypes_from_object(VALUE self, VALUE type)
   NdtObject *ndt_p;
 
   if (NDT_CHECK_TYPE(type)) {
-    return type;
+    return rb_funcall(type, rb_intern("dup"), 0, NULL);
   }
 
   cp = StringValuePtr(type);
@@ -392,7 +392,6 @@ NDTypes_initialize(int argc, VALUE *argv, VALUE self)
 {
   NdtObject *ndt_p;
   VALUE offsets = Qnil, type;
-  NDT_STATIC_CONTEXT(ctx);
   
   if (argc < 1) {
     rb_raise(rb_eArgError, "expected atleast type. offset optional. Number of args: %d.",
@@ -423,7 +422,8 @@ NDTypes_to_s(VALUE self)
   GET_NDT(self, ndt);
   cp = ndt_as_string(NDT(ndt), &ctx);
   if (cp == NULL) {
-    
+    seterr(&ctx);
+    raise_error();
   }
 
   str = rb_str_new_cstr(cp);
@@ -520,13 +520,6 @@ NDTypes_itemsize(VALUE self)
   return LL2NUM(size);
 }
 
-void
-obj_inspect(const char* msg, VALUE obj)
-{
-  VALUE insp = rb_funcall(obj, rb_intern("inspect"), 0, NULL);
-  printf("%s %s\n.", msg, StringValuePtr(insp));
-}
-
 /* Implement #align */
 static VALUE
 NDTypes_align(VALUE self)
@@ -545,20 +538,14 @@ NDTypes_align(VALUE self)
 }
 
 static int
-NDTypes_compare(VALUE self, VALUE other)
+NDTypes_compare(VALUE left, VALUE right)
 {
-  NdtObject *self_p = NULL, *other_p = NULL;
+  NdtObject *left_p = NULL, *right_p = NULL;
 
-  printf("inspector is here.\n");
-  obj_inspect("self: ", self);
-  obj_inspect("other: ", other);
-  
-  GET_NDT(self, self_p);
-  printf("got the pointer for self. %ld.\n", NDT(self_p));
-  GET_NDT(other, other_p);
-  printf("got the pointer for other. %ld.\n", NDT(other_p));
+  GET_NDT(left, left_p);
+  GET_NDT(right, right_p);
 
-  return ndt_equal(NDT(self_p), NDT(other_p));  
+  return ndt_equal(NDT(left_p), NDT(right_p));  
 }
 
 /* Implement #== operator */
@@ -589,7 +576,7 @@ NDTypes_neq(VALUE self, VALUE other)
   
   int r = NDTypes_compare(self, other);
   
-  if (r == 0) {                  /* not equal */
+  if (r == 0) {                 /* not equal */
     return Qtrue;
   }
   else {                        /* equal */
@@ -645,15 +632,47 @@ NDTypes_match(VALUE self, VALUE other)
 }
 
 static VALUE
-NDTypes_dup(VALUE self)
+NDTypes_ast(VALUE self)
 {
-  
+  NDT_STATIC_CONTEXT(ctx);
+  VALUE result;
+  char *cp;
+  NdtObject *self_p;
+
+  GET_NDT(self, self_p);
+
+  cp = ndt_ast_repr(NDT(self_p), &ctx);
+  if (cp == NULL) {
+    seterr(&ctx);
+    raise_error();
+  }
+
+  result = rb_str_new2(cp);
+  ndt_free(cp);
+
+  return result; 
 }
 
 static VALUE
-NDTypes_ast(VALUE self)
+NDTypes_pretty(VALUE self)
 {
-  
+  NDT_STATIC_CONTEXT(ctx);
+  char *cp;
+  NdtObject *self_p;
+  VALUE result;
+
+  GET_NDT(self, self_p);
+
+  cp = ndt_indent(NDT(self_p), &ctx);
+  if (cp == NULL) {
+    seterr(&ctx);
+    raise_error();
+  }
+
+  result = rb_str_new2(cp);
+  ndt_free(cp);
+
+  return result;
 }
 
 /****************************************************************************/
@@ -953,8 +972,8 @@ void Init_ruby_ndtypes(void)
   rb_define_method(cNDTypes, "to_s", NDTypes_to_s, 0);
   rb_define_method(cNDTypes, "hidden_dtype", NDTypes_hidden_dtype, 0);
   rb_define_method(cNDTypes, "match", NDTypes_match, 1);
-  rb_define_method(cNDTypes, "dup", NDTypes_dup, 0);
   rb_define_method(cNDTypes, "ast", NDTypes_ast, 0);
+  rb_define_method(cNDTypes, "pretty", NDTypes_pretty, 0);
 
   /* Boolean functions */
   rb_define_method(cNDTypes, "concrete?", NDTypes_ndt_is_concrete, 0);
@@ -981,3 +1000,4 @@ void Init_ruby_ndtypes(void)
   /* GC guard init */
   rb_ndtypes_init_gc_guard();
 }
+
